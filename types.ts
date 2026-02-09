@@ -7,6 +7,7 @@ export enum Page {
   EMPLOYEES = 'employees',
   APPROVALS = 'approvals',
   TRAVEL_ORDERS = 'travel_orders',
+  CREATE_TRAVEL_ORDER = 'create_travel_order',
   USERS = 'users',
   CALENDAR = 'calendar'
 }

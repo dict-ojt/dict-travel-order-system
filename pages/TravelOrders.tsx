@@ -5,7 +5,7 @@ import { travelOrders, getDashboardStats, TravelOrder } from '../data/database';
 
 interface TravelOrdersProps { onNavigate?: (page: Page) => void; }
 
-const TravelOrders: React.FC<TravelOrdersProps> = () => {
+const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
   const stats = getDashboardStats();
@@ -39,7 +39,12 @@ const TravelOrders: React.FC<TravelOrdersProps> = () => {
             <button onClick={() => setViewMode('simple')} className={`p-2 rounded-md ${viewMode === 'simple' ? 'bg-white dark:bg-slate-700 shadow text-dash-blue' : 'text-slate-500'}`}><TableIcon className="w-4 h-4" /></button>
             <button onClick={() => setViewMode('detailed')} className={`p-2 rounded-md ${viewMode === 'detailed' ? 'bg-white dark:bg-slate-700 shadow text-dash-blue' : 'text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-dash-blue text-white rounded-lg text-sm font-medium shadow-sm hover:bg-blue-600 transition-all"><Plus className="w-4 h-4" /> New Travel Order</button>
+          <button 
+            onClick={() => onNavigate?.(Page.CREATE_TRAVEL_ORDER)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-dash-blue text-white rounded-lg text-sm font-medium shadow-sm hover:bg-blue-600 transition-all"
+          >
+            <Plus className="w-4 h-4" /> New Travel Order
+          </button>
         </div>
       </div>
 

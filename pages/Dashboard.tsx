@@ -52,8 +52,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
-  // Get recent approvals from database
-  const recentApprovals = approvals.filter(a => a.status === 'pending').slice(0, 3);
+  // Get recent approved items from database
+  const recentApprovals = approvals
+    .filter(a => a.status === 'approved')
+    .sort((a, b) => new Date(b.processedAt || 0).getTime() - new Date(a.processedAt || 0).getTime())
+    .slice(0, 3);
 
   return (
     <div className="space-y-8">
@@ -124,9 +127,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{approval.purpose}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{approval.destination}</p>
-                    <span className="inline-block px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs rounded-full">
-                      Pending
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {approval.processedAt ? new Date(approval.processedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                    </p>
+                    <span className="inline-block px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs rounded-full">
+                      Approved
                     </span>
                   </div>
                 </div>
@@ -135,9 +140,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 bg-slate-50 dark:bg-black/20 rounded-full flex items-center justify-center mb-4">
-                <RefreshCcw className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                <CheckCircle2 className="w-8 h-8 text-slate-300 dark:text-slate-600" />
               </div>
-              <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No pending approvals</p>
+              <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No approved orders yet</p>
             </div>
           )}
         </div>

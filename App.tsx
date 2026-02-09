@@ -9,6 +9,7 @@ import Approvals from './pages/Approvals';
 import CalendarPage from './pages/CalendarPage';
 import Divisions from './pages/Divisions';
 import TravelSources from './pages/TravelSources';
+import CreateTravelOrder from './pages/CreateTravelOrder';
 import Settings from './pages/Settings';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -52,6 +53,7 @@ const App: React.FC = () => {
       case Page.DASHBOARD: return <Dashboard onSignOut={() => setIsLoggedIn(false)} onNavigate={setCurrentPage} />;
       case Page.EMPLOYEES: return <Employees />;
       case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} />;
+      case Page.CREATE_TRAVEL_ORDER: return <CreateTravelOrder onNavigate={setCurrentPage} />;
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
       case Page.APPROVALS: return <Approvals />;
       case Page.CALENDAR: return <CalendarPage />;
