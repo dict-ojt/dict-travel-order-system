@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <title>DICT | TMS Enterprise</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <script>
+    (function () {
+      const theme = localStorage.getItem('theme') || 'system';
+      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) document.documentElement.classList.add('dark');
+    })();
+
+    window.tailwind = {
+      config: {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'sans-serif'] },
+            colors: {
+              dash: {
+                orange: '#fe9365',
+                green: '#0ac282',
+                pink: '#fe5d70',
+                cyan: '#01a9ac',
+                blue: '#4099ff'
+              },
+              dark: {
+                bg: '#1c2331',
+                card: '#2a3345',
+                border: '#38445d',
+                sidebar: '#161d26'
+              }
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
+    }
+
+    .dark body {
+      background-color: #1c2331;
+      color: #f1f5f9;
+    }
+
+    .dark .bg-white {
+      background-color: #2a3345;
+    }
+
+    .dark .border-slate-200 {
+      border-color: #38445d;
+    }
+
+    .sidebar-item-active {
+      border-left: 4px solid #4099ff;
+      background: rgba(64, 153, 255, 0.1);
+    }
+
+    .stat-card-gradient {
+      transition: transform 0.2s;
+    }
+
+    .stat-card-gradient:hover {
+      transform: translateY(-4px);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+    }
+
+    /* Mock Chart Styling */
+    .chart-line {
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: dash 3s linear forwards;
+    }
+
+    @keyframes dash {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "react-dom/": "https://esm.sh/react-dom@19.0.0/",
+        "react/": "https://esm.sh/react@19.0.0/",
+        "react": "https://esm.sh/react@19.0.0",
+        "lucide-react": "https://esm.sh/lucide-react@0.469.0"
+      }
+    }
+    </script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-[#f6f7fb] text-slate-900 dark:text-slate-100 font-sans">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
