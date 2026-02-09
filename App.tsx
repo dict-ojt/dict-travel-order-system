@@ -7,6 +7,8 @@ import TravelOrders from './pages/TravelOrders';
 import TravelWorkflows from './pages/TravelWorkflows';
 import Approvals from './pages/Approvals';
 import CalendarPage from './pages/CalendarPage';
+import Divisions from './pages/Divisions';
+import TravelSources from './pages/TravelSources';
 import Settings from './pages/Settings';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -21,7 +23,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const root = window.document.documentElement;
     localStorage.setItem('theme', theme);
-    
+
     const applyTheme = () => {
       const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (isDark) {
@@ -32,7 +34,7 @@ const App: React.FC = () => {
     };
 
     applyTheme();
-    
+
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = () => applyTheme();
@@ -47,14 +49,14 @@ const App: React.FC = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case Page.DASHBOARD: return <Dashboard onSignOut={() => setIsLoggedIn(false)} />;
+      case Page.DASHBOARD: return <Dashboard onSignOut={() => setIsLoggedIn(false)} onNavigate={setCurrentPage} />;
       case Page.EMPLOYEES: return <Employees />;
-      case Page.TRAVEL_ORDERS: return <TravelOrders />;
+      case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} />;
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
       case Page.APPROVALS: return <Approvals />;
       case Page.CALENDAR: return <CalendarPage />;
-      case Page.DIVISIONS:
-      case Page.TRAVEL_SOURCES:
+      case Page.DIVISIONS: return <Divisions />;
+      case Page.TRAVEL_SOURCES: return <TravelSources />;
       case Page.USERS:
         return <Settings type={currentPage} />;
       default: return <Dashboard onSignOut={() => setIsLoggedIn(false)} />;
@@ -65,10 +67,10 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-[#fcfdfe] dark:bg-dark-bg overflow-hidden font-sans">
       <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header 
-          onLogout={() => setIsLoggedIn(false)} 
-          theme={theme} 
-          setTheme={setTheme} 
+        <Header
+          onLogout={() => setIsLoggedIn(false)}
+          theme={theme}
+          setTheme={setTheme}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
           {renderPage()}

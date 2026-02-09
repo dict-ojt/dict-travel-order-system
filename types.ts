@@ -25,7 +25,7 @@ export interface TravelOrder {
   origin: string;
   destination: string;
   distanceKm: number;
-  vehicle: 'Official' | 'Private' | 'Public';
+  vehicle: string;
   purpose: string;
   status: 'Pending' | 'Approved' | 'Completed' | 'Rejected';
   date: string;

@@ -1,10 +1,10 @@
-
 import React from 'react';
 import {
   Home, Building2, MapPin, RefreshCcw,
   Users, CheckCircle2, FileText, UserCog, Calendar
 } from 'lucide-react';
 import { Page } from '../types';
+import { currentUser } from '../data/database';
 
 interface SidebarProps {
   currentPage: Page;
@@ -96,12 +96,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       <div className="p-4 bg-slate-50 dark:bg-black/20 border-t border-slate-100 dark:border-dark-border">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img src="https://i.pravatar.cc/100?u=superadmin" className="w-8 h-8 rounded-full" />
+            <img src={currentUser.avatar} className="w-8 h-8 rounded-full object-cover" alt="User" />
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-dash-green border-2 border-white dark:border-dark-sidebar rounded-full"></div>
           </div>
           <div className="overflow-hidden">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">Super Admin</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">DICT Administrator</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{currentUser.fullName}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{currentUser.position}</p>
           </div>
         </div>
       </div>

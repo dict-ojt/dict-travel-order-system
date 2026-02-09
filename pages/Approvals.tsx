@@ -1,138 +1,101 @@
-import React from 'react';
-import {
-  Check, X, Clock,
-  ArrowRight, User,
-  MoreVertical, Search,
-  Map as MapIcon, Download
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Clock, CheckCircle2, XCircle, Timer, LayoutGrid, List, MapPin, Calendar } from 'lucide-react';
+import { Page } from '../types';
+import { approvals, getDashboardStats, Approval } from '../data/database';
 
-const Approvals: React.FC = () => {
-  const pendingApprovals = [
-    {
-      id: 'ORD-10290',
-      requester: 'Reyes, Elena S.',
-      origin: 'QC Hub',
-      dest: 'Baguio TC',
-      date: 'Feb 23, 2026',
-      unit: 'Finance & Planning',
-      priority: 'High',
-      desc: 'Annual Regional IT Infrastructure Audit'
-    },
-    {
-      id: 'ORD-10293',
-      requester: 'Miller, David K.',
-      origin: 'Manila HQ',
-      dest: 'Cebu RO',
-      date: 'Feb 25, 2026',
-      unit: 'Technical Operations',
-      priority: 'Medium',
-      desc: 'FOC Cable Deployment Supervisor'
-    },
-    {
-      id: 'ORD-10295',
-      requester: 'Santos, Mark A.',
-      origin: 'Clark Hub',
-      dest: 'Vigan Site',
-      date: 'Feb 26, 2026',
-      unit: 'Field Support',
-      priority: 'Normal',
-      desc: 'LGU Connect Maintenance Visit'
+interface ApprovalsProps { onNavigate?: (page: Page) => void; }
+
+const Approvals: React.FC<ApprovalsProps> = () => {
+  const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
+  const [searchQuery, setSearchQuery] = useState('');
+  const stats = getDashboardStats();
+
+  const filteredApprovals = approvals.filter(a =>
+    a.requestorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.purpose.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getStatusColor = (status: Approval['status']) => {
+    switch (status) {
+      case 'pending': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
+      case 'approved': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+      case 'rejected': return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+      default: return 'bg-slate-100 text-slate-600';
     }
+  };
+
+  const statsConfig = [
+    { label: 'Pending', value: stats.pendingApprovals, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-100 dark:border-amber-800' },
+    { label: 'Approved Today', value: stats.approvedToday, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-100 dark:border-green-800' },
+    { label: 'Rejected Today', value: stats.rejectedToday, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-100 dark:border-red-800' },
+    { label: 'Avg. Response', value: '1.4d', icon: Timer, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-100 dark:border-blue-800' }
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Approvals</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {pendingApprovals.length} pending travel orders waiting for your approval
-          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Review and process travel order requests</p>
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search orders..."
-            className="pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-dash-blue/30 text-slate-900 dark:text-white placeholder-slate-400"
-          />
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+          <button onClick={() => setViewMode('simple')} className={`p-2 rounded-md ${viewMode === 'simple' ? 'bg-white dark:bg-slate-700 shadow text-dash-blue' : 'text-slate-500'}`}><List className="w-4 h-4" /></button>
+          <button onClick={() => setViewMode('detailed')} className={`p-2 rounded-md ${viewMode === 'detailed' ? 'bg-white dark:bg-slate-700 shadow text-dash-blue' : 'text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 space-y-4">
-          {pendingApprovals.map((item) => (
-            <div key={item.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-              <div className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-900 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                    <span className="text-xs text-slate-400 dark:text-slate-500">ID</span>
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{item.id.split('-')[1]}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-sm font-medium text-slate-900 dark:text-white">{item.requester}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.priority === 'High' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                          item.priority === 'Medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                            'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
-                        }`}>
-                        {item.priority}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{item.desc}</p>
-                    <div className="flex items-center flex-wrap gap-4 text-xs text-slate-500 dark:text-slate-400">
-                      <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {item.unit}</span>
-                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {item.date}</span>
-                      <span className="flex items-center gap-1.5 text-dash-blue"><MapIcon className="w-3.5 h-3.5" /> {item.origin} <ArrowRight className="w-3 h-3" /> {item.dest}</span>
-                    </div>
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Search approvals..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statsConfig.map((s, i) => (
+          <div key={i} className={`bg-white dark:bg-slate-800 border ${s.border} rounded-xl p-4 cursor-pointer hover:shadow-md transition-all`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 ${s.bg} rounded-full flex items-center justify-center`}><s.icon className={`w-5 h-5 ${s.color}`} /></div>
+              <div><p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p><p className="text-xs text-slate-500">{s.label}</p></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {viewMode === 'simple' ? (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {filteredApprovals.map(a => (
+              <div key={a.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <img src={a.requestorAvatar} alt={a.requestorName} className="w-10 h-10 rounded-full object-cover" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{a.requestorName} <span className="text-slate-500">• {a.requestorDivision}</span></p>
+                    <p className="text-xs text-slate-500">{a.purpose}</p>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 w-full md:w-auto border-t md:border-t-0 border-slate-100 dark:border-slate-700 pt-4 md:pt-0">
-                  <button className="flex-1 md:flex-none px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2">
-                    <Check className="w-4 h-4" /> Approve
-                  </button>
-                  <button className="flex-1 md:flex-none px-4 py-2 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center gap-2">
-                    <X className="w-4 h-4" /> Deny
-                  </button>
-                  <button className="p-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-slate-500">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
+                <div className="flex items-center gap-4">
+                  <div className="text-right text-xs text-slate-500"><p className="flex items-center gap-1"><MapPin className="w-3 h-3" />{a.destination}</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{a.travelDate}</p></div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(a.status)}`}>{a.status}</span>
+                  {a.status === 'pending' && <div className="flex gap-2"><button className="px-3 py-1.5 bg-green-500 text-white text-xs rounded-lg">Approve</button><button className="px-3 py-1.5 bg-red-500 text-white text-xs rounded-lg">Reject</button></div>}
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredApprovals.map(a => (
+            <div key={a.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3"><img src={a.requestorAvatar} alt={a.requestorName} className="w-12 h-12 rounded-full" /><div><p className="text-sm font-semibold text-slate-900 dark:text-white">{a.requestorName}</p><p className="text-xs text-slate-500">{a.requestorDivision}</p></div></div>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(a.status)}`}>{a.status}</span>
+              </div>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">{a.purpose}</p>
+              <div className="text-xs text-slate-500 space-y-1 mb-4"><p className="flex items-center gap-1"><MapPin className="w-3 h-3" />{a.destination}</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{a.travelDate}</p></div>
+              {a.status === 'pending' && <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700"><button className="flex-1 py-2 bg-green-500 text-white text-xs rounded-lg">Approve</button><button className="flex-1 py-2 bg-red-500 text-white text-xs rounded-lg">Reject</button></div>}
             </div>
           ))}
         </div>
-
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">Metrics</h3>
-
-          {/* Card 1: Average Turnaround */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-xl shadow-sm">
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold text-slate-900 dark:text-white">1.4</span>
-              <span className="text-sm text-slate-500 dark:text-slate-400">days</span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Average Turnaround</p>
-          </div>
-
-          {/* Card 2: SLA Compliance */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-xl shadow-sm">
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold text-slate-900 dark:text-white">92</span>
-              <span className="text-lg text-slate-400">%</span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">SLA Compliance</p>
-          </div>
-
-          {/* Download Button */}
-          <button className="w-full bg-dash-blue hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2">
-            <Download className="w-4 h-4" />
-            Download Logs
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
