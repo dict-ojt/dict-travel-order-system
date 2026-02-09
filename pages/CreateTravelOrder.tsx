@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight } from 'lucide-react';
 import { Page } from '../types';
 import { travelSources, employees, currentUser, TravelOrder } from '../data/database';
@@ -27,7 +27,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+  const [dateErrors, setDateErrors] = useState<Record<string, string>>({});
   const [baseOrigin, setBaseOrigin] = useState('');
   const [legs, setLegs] = useState<TravelLeg[]>([]);
   
@@ -93,6 +93,33 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
     setLegs(legs.filter(l => l.id !== id));
   };
 
+  const validateDates = () => {
+    const errors: Record<string, string> = {};
+    legs.forEach((leg, index) => {
+      if (leg.startDate && leg.endDate && leg.endDate < leg.startDate) {
+        errors[`${leg.id}_end`] = 'End date cannot be before start date';
+      }
+      if (index > 0) {
+        const prevLeg = legs[index - 1];
+        if (prevLeg.endDate && leg.startDate && leg.startDate < prevLeg.endDate) {
+          errors[`${leg.id}_start`] = `Cannot start before ${getLocationName(prevLeg.toLocationId)} ends`;
+        }
+      }
+      if (index === 0 && leg.startDate) {
+        const today = new Date().toISOString().split('T')[0];
+        if (leg.startDate < today) {
+          errors[`${leg.id}_start`] = 'Start date cannot be in the past';
+        }
+      }
+    });
+    setDateErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  useEffect(() => {
+    validateDates();
+  }, [legs]);
+
   const totalDistance = legs.reduce((sum, leg) => sum + leg.distanceKm, 0);
   const overallStartDate = legs[0]?.startDate || '';
   const overallEndDate = legs[legs.length - 1]?.endDate || '';
@@ -128,10 +155,15 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
   };
 
   const handleSubmit = async (createAnother: boolean = false) => {
+    if (!validateDates()) {
+      const firstError = document.querySelector('.border-red-500');
+      firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     setIsSubmitting(false);
-    
+
     if (createAnother) {
       setBaseOrigin('');
       setLegs([]);
@@ -143,6 +175,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
       setPurpose('');
       setRemarks('');
       setUploadedFiles([]);
+      setDateErrors({});
     } else {
       onNavigate(Page.TRAVEL_ORDERS);
     }
@@ -169,7 +202,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
         </button>
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Create Travel Order</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Sequential Travel Legs • Version 1</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Sequential Travel Legs</p>
         </div>
       </div>
 
@@ -246,20 +279,36 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
                               <Route className="w-4 h-4" />
                               <span>{leg.distanceKm > 0 ? `${leg.distanceKm} km` : 'Auto-calculated'}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="date"
-                                value={leg.startDate}
-                                onChange={(e) => updateLeg(leg.id, { startDate: e.target.value })}
-                                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
-                              />
-                              <ArrowRight className="w-4 h-4 text-slate-400" />
-                              <input
-                                type="date"
-                                value={leg.endDate}
-                                onChange={(e) => updateLeg(leg.id, { endDate: e.target.value })}
-                                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
-                              />
+                            <div className="flex items-start gap-2">
+                              <div className="flex flex-col">
+                                <input
+                                  type="date"
+                                  value={leg.startDate}
+                                  onChange={(e) => updateLeg(leg.id, { startDate: e.target.value })}
+                                  min={index > 0 ? legs[index - 1]?.endDate : new Date().toISOString().split('T')[0]}
+                                  className={`px-3 py-1.5 bg-white dark:bg-slate-800 border rounded text-sm ${
+                                    dateErrors[`${leg.id}_start`] ? 'border-red-500' : 'border-slate-200 dark:border-slate-600'
+                                  }`}
+                                />
+                                {dateErrors[`${leg.id}_start`] && (
+                                  <span className="text-xs text-red-500 mt-1">{dateErrors[`${leg.id}_start`]}</span>
+                                )}
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-slate-400 mt-2" />
+                              <div className="flex flex-col">
+                                <input
+                                  type="date"
+                                  value={leg.endDate}
+                                  onChange={(e) => updateLeg(leg.id, { endDate: e.target.value })}
+                                  min={leg.startDate}
+                                  className={`px-3 py-1.5 bg-white dark:bg-slate-800 border rounded text-sm ${
+                                    dateErrors[`${leg.id}_end`] ? 'border-red-500' : 'border-slate-200 dark:border-slate-600'
+                                  }`}
+                                />
+                                {dateErrors[`${leg.id}_end`] && (
+                                  <span className="text-xs text-red-500 mt-1">{dateErrors[`${leg.id}_end`]}</span>
+                                )}
+                              </div>
                             </div>
                             {leg.isReturn && (
                               <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">
@@ -318,6 +367,14 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
                     }
                   </span>
                 </div>
+                {Object.keys(dateErrors).length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg mt-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Please fix date errors before submitting</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -570,10 +627,10 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
           <button onClick={() => onNavigate(Page.TRAVEL_ORDERS)} className="px-6 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800">
             Cancel
           </button>
-          <button onClick={() => handleSubmit(true)} disabled={isSubmitting} className="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 disabled:opacity-50">
+          <button onClick={() => handleSubmit(true)} disabled={isSubmitting || Object.keys(dateErrors).length > 0} className="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 disabled:opacity-50">
             {isSubmitting ? 'Creating...' : 'Create & Create Another'}
           </button>
-          <button onClick={() => handleSubmit(false)} disabled={isSubmitting} className="px-6 py-2.5 bg-dash-blue text-white rounded-lg font-medium hover:bg-blue-600 shadow-sm disabled:opacity-50">
+          <button onClick={() => handleSubmit(false)} disabled={isSubmitting || Object.keys(dateErrors).length > 0} className="px-6 py-2.5 bg-dash-blue text-white rounded-lg font-medium hover:bg-blue-600 shadow-sm disabled:opacity-50">
             {isSubmitting ? 'Creating...' : 'Create'}
           </button>
         </div>
