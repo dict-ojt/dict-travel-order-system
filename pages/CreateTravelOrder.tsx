@@ -334,7 +334,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => addLeg(false)}
-                disabled={!baseOrigin || (legs.length > 0 && !legs[legs.length - 1].toLocationId)}
+                disabled={!baseOrigin || (legs.length > 0 && !legs[legs.length - 1].toLocationId) || legs.some(l => l.isReturn)}
                 className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 rounded-lg hover:border-dash-blue hover:text-dash-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
