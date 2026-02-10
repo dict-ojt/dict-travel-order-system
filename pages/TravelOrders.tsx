@@ -8,13 +8,16 @@ interface TravelOrdersProps { onNavigate?: (page: Page) => void; }
 const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'completed'>('all');
   const stats = getDashboardStats();
 
-  const filteredOrders = travelOrders.filter(o =>
-    o.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.purpose.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredOrders = travelOrders.filter(o => {
+    const matchesSearch = o.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.purpose.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusColor = (status: TravelOrder['status']) => {
     switch (status) {
@@ -48,25 +51,32 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input type="text" placeholder="Search travel orders..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="text" placeholder="Search travel orders..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+        </div>
+        {statusFilter !== 'all' && (
+          <button onClick={() => setStatusFilter('all')} className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
+            Clear filter
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all">
+        <div onClick={() => setStatusFilter('all')} className={`bg-white dark:bg-slate-800 border rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all ${statusFilter === 'all' ? 'ring-2 ring-dash-blue border-dash-blue' : 'border-slate-100 dark:border-slate-700'}`}>
           <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center"><FileText className="w-6 h-6 text-slate-600 dark:text-slate-400" /></div>
           <div><p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalOrders}</p><p className="text-xs text-slate-500">Total Orders</p></div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-green-100 dark:border-green-800 rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all">
+        <div onClick={() => setStatusFilter('approved')} className={`bg-white dark:bg-slate-800 border rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all ${statusFilter === 'approved' ? 'ring-2 ring-green-500 border-green-500' : 'border-green-100 dark:border-green-800'}`}>
           <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center"><Check className="w-6 h-6 text-green-600 dark:text-green-400" /></div>
           <div><p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.approvedOrders}</p><p className="text-xs text-slate-500">Approved</p></div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-amber-100 dark:border-amber-800 rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all">
+        <div onClick={() => setStatusFilter('pending')} className={`bg-white dark:bg-slate-800 border rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all ${statusFilter === 'pending' ? 'ring-2 ring-amber-500 border-amber-500' : 'border-amber-100 dark:border-amber-800'}`}>
           <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center"><Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" /></div>
           <div><p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.pendingOrders}</p><p className="text-xs text-slate-500">Pending</p></div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all">
+        <div onClick={() => setStatusFilter('completed')} className={`bg-white dark:bg-slate-800 border rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all ${statusFilter === 'completed' ? 'ring-2 ring-blue-500 border-blue-500' : 'border-blue-100 dark:border-blue-800'}`}>
           <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center"><Check className="w-6 h-6 text-blue-600 dark:text-blue-400" /></div>
           <div><p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.completedOrders}</p><p className="text-xs text-slate-500">Completed</p></div>
         </div>
