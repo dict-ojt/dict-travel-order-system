@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight } from 'lucide-react';
 import { Page } from '../types';
-import { travelSources, employees, currentUser, TravelOrder } from '../data/database';
+import { travelSources, employees, currentUser, TravelOrder, travelOrders } from '../data/database';
+import LocationSelector from '../components/LocationSelector';
+import RouteSelectionModal from '../components/RouteSelectionModal';
+import { normalizeLocation, NormalizedLocation, RouteOption, getSavedRoutesFromStorage, SavedRoute } from '../services/routingService';
 
 interface CreateTravelOrderProps {
   onNavigate: (page: Page) => void;
@@ -9,12 +12,15 @@ interface CreateTravelOrderProps {
 
 interface TravelLeg {
   id: string;
-  fromLocationId: string;
-  toLocationId: string;
+  fromLocation: NormalizedLocation;
+  toLocation: NormalizedLocation | null;
   startDate: string;
   endDate: string;
   distanceKm: number;
   isReturn: boolean;
+  stops: NormalizedLocation[];
+  avoid: ('tolls' | 'highways' | 'ferries')[];
+  avoidPoint: NormalizedLocation | null;
 }
 
 interface Traveler {
@@ -28,9 +34,138 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dateErrors, setDateErrors] = useState<Record<string, string>>({});
-  const [baseOrigin, setBaseOrigin] = useState('');
+  const [baseOrigin, setBaseOrigin] = useState<NormalizedLocation | null>(null);
   const [legs, setLegs] = useState<TravelLeg[]>([]);
-  
+  const [showRouteModal, setShowRouteModal] = useState(false);
+  const [currentRouteLegId, setCurrentRouteLegId] = useState<string | null>(null);
+  const [modalLocations, setModalLocations] = useState<{ from: NormalizedLocation, to: NormalizedLocation } | null>(null);
+
+  // Saved Routes State
+  const [showSavedRoutes, setShowSavedRoutes] = useState(false);
+  const [activeLegForSavedRoute, setActiveLegForSavedRoute] = useState<string | null>(null);
+  const [savedRoutesList, setSavedRoutesList] = useState<SavedRoute[]>([]);
+  // Use travelOrders[0] for demo edit
+  const demoOrder = travelOrders[0];
+
+  useEffect(() => {
+    // Populate form with demo data
+    if (demoOrder) {
+      setPurpose(demoOrder.purpose);
+      setVehicle(demoOrder.vehicle);
+      setFundSource(demoOrder.fundSource || '');
+      setExpenses(demoOrder.expenses || []);
+      setApprovalSteps(demoOrder.approvalSteps || '');
+      setRemarks(demoOrder.remarks || '');
+
+      // Set Origin
+      const origin = normalizeLocation({ name: demoOrder.originName, display_name: demoOrder.originName, lat: 0, lon: 0 }); // Mock normalization
+      setBaseOrigin(origin);
+
+      if (demoOrder.legs) {
+        const loadedLegs: TravelLeg[] = demoOrder.legs.map((leg) => {
+          const fromSource = travelSources.find(l => l.id === leg.fromLocationId);
+          const toSource = travelSources.find(l => l.id === leg.toLocationId);
+
+          const fromLoc = fromSource
+            ? normalizeLocation(fromSource)
+            : normalizeLocation({ lat: 0, lon: 0, display_name: 'Unknown Location' });
+
+          const toLoc = toSource
+            ? normalizeLocation(toSource)
+            : null;
+
+          return {
+            id: leg.id,
+            fromLocation: fromLoc!,
+            toLocation: toLoc,
+            startDate: leg.startDate,
+            endDate: leg.endDate,
+            distanceKm: leg.distanceKm,
+            isReturn: leg.isReturn,
+            stops: [], // Mock data doesn't have stops yet
+            avoid: [],
+            avoidPoint: null
+          };
+        });
+        setLegs(loadedLegs);
+      }
+    }
+  }, []);
+
+  /* State Updates for Stops */
+  const [routeStops, setRouteStops] = useState<Record<string, NormalizedLocation[]>>({});
+
+  useEffect(() => {
+    if (showSavedRoutes) {
+      setSavedRoutesList(getSavedRoutesFromStorage());
+    }
+  }, [showSavedRoutes]);
+
+  const handleLoadSavedRoute = (route: SavedRoute) => {
+    if (!activeLegForSavedRoute) return;
+
+    // Apply saved route to the leg
+    const legIndex = legs.findIndex(l => l.id === activeLegForSavedRoute);
+    if (legIndex === -1) return;
+
+    // We can't easily change the *origin* of the leg if it's tied to the previous leg, 
+    // unless it's the first leg. But let's assume valid intent.
+    // If it's the first leg, we update baseOrigin.
+    if (legIndex === 0) {
+      setBaseOrigin(route.from);
+      const newLegs = [...legs];
+      newLegs[0].fromLocation = route.from;
+      newLegs[0].toLocation = route.to;
+      newLegs[0].avoid = route.avoid;
+      newLegs[0].avoidPoint = route.avoidPoint;
+      setLegs(newLegs);
+    } else {
+      // For subsequent legs, we can only update To, unless we break the chain geometry?
+      // Let's just update To and Stops/Avoidances. 
+      // Warn if origin mismatch?
+      const leg = legs[legIndex];
+      if (leg.fromLocation.name !== route.from.name) {
+        alert(`Note: The saved route starts from ${route.from.name}, but this leg starts from ${leg.fromLocation.name}. Waypoints might be off.`);
+      }
+      updateLeg(activeLegForSavedRoute, {
+        toLocation: route.to,
+        avoid: route.avoid,
+        avoidPoint: route.avoidPoint
+      });
+    }
+
+    // Update stops
+    setRouteStops(prev => ({
+      ...prev,
+      [activeLegForSavedRoute]: route.stops
+    }));
+
+    setShowSavedRoutes(false);
+    setActiveLegForSavedRoute(null);
+  };
+
+  const addStopToLeg = (legId: string) => {
+    setRouteStops(prev => ({
+      ...prev,
+      [legId]: [...(prev[legId] || []), { lat: 0, lng: 0, name: '', address: '' }] // Placeholder
+    }));
+  };
+
+  const removeStopFromLeg = (legId: string, index: number) => {
+    setRouteStops(prev => ({
+      ...prev,
+      [legId]: (prev[legId] || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateStopInLeg = (legId: string, index: number, location: NormalizedLocation) => {
+    setRouteStops(prev => {
+      const newStops = [...(prev[legId] || [])];
+      newStops[index] = location;
+      return { ...prev, [legId]: newStops };
+    });
+  };
+
   const [travelers, setTravelers] = useState<Traveler[]>([{ id: '1', employeeId: currentUser.id }]);
   const [fundSource, setFundSource] = useState('');
   const [vehicle, setVehicle] = useState('');
@@ -39,54 +174,61 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
   const [purpose, setPurpose] = useState('');
   const [remarks, setRemarks] = useState('');
 
-  const calculateDistance = (fromId: string, toId: string): number => {
-    const distanceMap: Record<string, Record<string, number>> = {
-      'loc-001': { 'loc-002': 270, 'loc-003': 400, 'loc-004': 85, 'loc-005': 60, 'loc-006': 15, 'loc-007': 570, 'loc-008': 975, 'loc-009': 570, 'loc-010': 250, 'loc-011': 465, 'loc-012': 850 },
-      'loc-002': { 'loc-001': 270, 'loc-007': 840, 'loc-008': 1220 },
-      'loc-003': { 'loc-001': 400, 'loc-007': 600, 'loc-008': 980 },
-      'loc-004': { 'loc-001': 85, 'loc-007': 650, 'loc-008': 1040 },
-      'loc-005': { 'loc-001': 60, 'loc-007': 490, 'loc-008': 880 },
-      'loc-006': { 'loc-001': 15 },
-      'loc-007': { 'loc-001': 570, 'loc-008': 405, 'loc-009': 0, 'loc-011': 180 },
-      'loc-008': { 'loc-001': 975, 'loc-007': 405 },
-      'loc-009': { 'loc-007': 0 },
-      'loc-010': { 'loc-001': 250 },
-      'loc-011': { 'loc-001': 465, 'loc-007': 180 },
-      'loc-012': { 'loc-001': 850 }
-    };
-    return distanceMap[fromId]?.[toId] || Math.floor(Math.random() * 500 + 100);
-  };
 
-  const getLocationName = (id: string) => travelSources.find(s => s.id === id)?.name || '';
+
+  const getLocationName = (loc: NormalizedLocation | null) => loc?.name || 'Unknown';
 
   const addLeg = (isReturn: boolean = false) => {
+    if (!baseOrigin) return;
+
     const prevLeg = legs[legs.length - 1];
-    const fromId = prevLeg ? prevLeg.toLocationId : baseOrigin;
-    const toId = isReturn ? baseOrigin : '';
-    
+    const fromLocation = prevLeg ? prevLeg.toLocation : baseOrigin;
+    const toLocation = isReturn ? baseOrigin : null;
+
+    // Safety check - if previous leg has no destination, we can't start a new one unless it's the first one logic
+    if (prevLeg && !prevLeg.toLocation) return;
+
     const today = new Date();
     const startDate = prevLeg ? prevLeg.endDate : today.toISOString().split('T')[0];
-    
+
     setLegs([...legs, {
       id: Date.now().toString(),
-      fromLocationId: fromId,
-      toLocationId: toId,
+      fromLocation: fromLocation!,
+      toLocation,
       startDate,
       endDate: '',
       distanceKm: 0,
-      isReturn
+      isReturn,
+      stops: [],
+      avoid: [],
+      avoidPoint: null
     }]);
+
+    // If it's a return leg, we can auto-calculate route distance if we want, but user might want options.
+    // Let's just set the locations.
   };
 
   const updateLeg = (id: string, updates: Partial<TravelLeg>) => {
     setLegs(legs.map(leg => {
       if (leg.id !== id) return leg;
-      const updated = { ...leg, ...updates };
-      if (updated.fromLocationId && updated.toLocationId) {
-        updated.distanceKm = calculateDistance(updated.fromLocationId, updated.toLocationId);
-      }
-      return updated;
+      return { ...leg, ...updates };
     }));
+  };
+
+  const openRouteModal = (legId: string, from: NormalizedLocation, to: NormalizedLocation | null) => {
+    if (!to) return;
+    setCurrentRouteLegId(legId);
+    setModalLocations({ from, to });
+    setShowRouteModal(true);
+  };
+
+  const handleRouteSelect = (route: RouteOption) => {
+    if (currentRouteLegId) {
+      updateLeg(currentRouteLegId, {
+        distanceKm: parseFloat((route.distance / 1000).toFixed(1))
+      });
+    }
+    setShowRouteModal(false);
   };
 
   const removeLeg = (id: string) => {
@@ -102,7 +244,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
       if (index > 0) {
         const prevLeg = legs[index - 1];
         if (prevLeg.endDate && leg.startDate && leg.startDate < prevLeg.endDate) {
-          errors[`${leg.id}_start`] = `Cannot start before ${getLocationName(prevLeg.toLocationId)} ends`;
+          errors[`${leg.id}_start`] = `Cannot start before ${getLocationName(prevLeg.toLocation)} ends`;
         }
       }
       if (index === 0 && leg.startDate) {
@@ -165,7 +307,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
     setIsSubmitting(false);
 
     if (createAnother) {
-      setBaseOrigin('');
+      setBaseOrigin(null);
       setLegs([]);
       setTravelers([{ id: '1', employeeId: currentUser.id }]);
       setFundSource('');
@@ -220,109 +362,196 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
               </div>
             </div>
           </div>
-          
+
           <div className="p-6 space-y-6">
             {/* Starting Point */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Starting Point (Origin) <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={baseOrigin}
-                onChange={(e) => setBaseOrigin(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
-              >
-                <option value="">Select origin location</option>
-                {travelSources.map(source => (
-                  <option key={source.id} value={source.id}>{source.name}</option>
-                ))}
-              </select>
+              <LocationSelector
+                label="Starting Point (Origin)"
+                placeholder="Search origin location (e.g. DICT Headquarters)"
+                defaultOptions={travelSources}
+                onSelect={(val) => {
+                  const norm = normalizeLocation(val);
+                  setBaseOrigin(norm);
+                  // Reset legs if origin changes? Maybe not, complicates things.
+                  if (legs.length > 0 && legs[0].fromLocation.name !== norm?.name) {
+                    // Ideally we warn user or update first leg from
+                    const newLegs = [...legs];
+                    newLegs[0].fromLocation = norm!;
+                    setLegs(newLegs);
+                  }
+                }}
+                initialValue={baseOrigin?.name}
+              />
             </div>
 
             {/* Travel Legs */}
+
             {legs.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                   <span>Travel Legs</span>
                   <div className="h-px flex-1 bg-slate-200 dark:bg-slate-600" />
                 </div>
-                
-                <div className="space-y-3">
+
+                <div className="space-y-4">
                   {legs.map((leg, index) => (
-                    <div key={leg.id} className="relative">
-                      {index > 0 && (
-                        <div className="absolute -top-4 left-6 w-0.5 h-4 bg-slate-300 dark:bg-slate-600" />
+                    <div key={leg.id} className="relative group">
+                      {/* Connector Line */}
+                      {index < legs.length - 1 && (
+                        <div className="absolute left-[31px] top-12 bottom-[-16px] w-0.5 bg-slate-200 dark:bg-slate-700 z-0" />
                       )}
-                      <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 rounded-lg">
-                        <div className={`w-8 h-8 ${getLegColor(index)} rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0`}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-slate-500">From:</span>
-                            <span className="font-medium">{getLocationName(leg.fromLocationId)}</span>
-                            <ArrowRight className="w-4 h-4 text-slate-400" />
-                            <select
-                              value={leg.toLocationId}
-                              onChange={(e) => updateLeg(leg.id, { toLocationId: e.target.value })}
-                              className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
-                            >
-                              <option value="">Select destination</option>
-                              {travelSources.filter(s => s.id !== leg.fromLocationId).map(source => (
-                                <option key={source.id} value={source.id}>{source.name}</option>
-                              ))}
-                            </select>
+
+                      <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm transition-all hover:shadow-md z-10">
+                        {/* Header with Leg Number and Actions */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 ${getLegColor(index)} rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0`}>
+                              {index + 1}
+                            </div>
+                            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                              Leg {index + 1}
+                              {leg.distanceKm > 0 && <span className="ml-2 font-normal text-slate-500">• {leg.distanceKm} km</span>}
+                            </h3>
                           </div>
-                          
-                          <div className="flex flex-wrap items-center gap-4">
-                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                              <Route className="w-4 h-4" />
-                              <span>{leg.distanceKm > 0 ? `${leg.distanceKm} km` : 'Auto-calculated'}</span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <div className="flex flex-col">
-                                <input
-                                  type="date"
-                                  value={leg.startDate}
-                                  onChange={(e) => updateLeg(leg.id, { startDate: e.target.value })}
-                                  min={index > 0 ? legs[index - 1]?.endDate : new Date().toISOString().split('T')[0]}
-                                  className={`px-3 py-1.5 bg-white dark:bg-slate-800 border rounded text-sm ${
-                                    dateErrors[`${leg.id}_start`] ? 'border-red-500' : 'border-slate-200 dark:border-slate-600'
-                                  }`}
-                                />
-                                {dateErrors[`${leg.id}_start`] && (
-                                  <span className="text-xs text-red-500 mt-1">{dateErrors[`${leg.id}_start`]}</span>
-                                )}
-                              </div>
-                              <ArrowRight className="w-4 h-4 text-slate-400 mt-2" />
-                              <div className="flex flex-col">
-                                <input
-                                  type="date"
-                                  value={leg.endDate}
-                                  onChange={(e) => updateLeg(leg.id, { endDate: e.target.value })}
-                                  min={leg.startDate}
-                                  className={`px-3 py-1.5 bg-white dark:bg-slate-800 border rounded text-sm ${
-                                    dateErrors[`${leg.id}_end`] ? 'border-red-500' : 'border-slate-200 dark:border-slate-600'
-                                  }`}
-                                />
-                                {dateErrors[`${leg.id}_end`] && (
-                                  <span className="text-xs text-red-500 mt-1">{dateErrors[`${leg.id}_end`]}</span>
-                                )}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => removeLeg(leg.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              title="Remove Leg"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pl-11 space-y-4">
+                          {/* Route Grid */}
+                          <div className="grid md:grid-cols-[1fr,auto,1fr] gap-4 items-start">
+                            {/* From */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                From (Origin)
+                              </label>
+                              <div className="px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                {getLocationName(leg.fromLocation)}
                               </div>
                             </div>
-                            {leg.isReturn && (
-                              <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">
-                                🏠 Return
-                              </span>
+
+                            {/* Arrow (Hidden on mobile) */}
+                            <div className="hidden md:flex pt-8 justify-center text-slate-300 dark:text-slate-600">
+                              <ArrowRight className="w-5 h-5" />
+                            </div>
+
+                            {/* To */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <MapPin className="w-3 h-3 text-dash-blue" />
+                                To (Destination)
+                              </label>
+                              <LocationSelector
+                                label=""
+                                placeholder="Search destination..."
+                                defaultOptions={travelSources.filter(s => s.name !== leg.fromLocation.name)}
+                                initialValue={leg.toLocation?.name}
+                                onSelect={(val) => {
+                                  const norm = normalizeLocation(val);
+                                  updateLeg(leg.id, { toLocation: norm });
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Stops Section */}
+                          <div className="bg-slate-50 dark:bg-slate-900/30 rounded-lg p-3 border border-slate-100 dark:border-slate-800 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Stops / Waypoints</p>
+                              <button
+                                onClick={() => addStopToLeg(leg.id)}
+                                className="text-xs text-dash-blue hover:text-blue-600 flex items-center gap-1 font-medium"
+                              >
+                                <Plus className="w-3 h-3" /> Add Stop
+                              </button>
+                            </div>
+
+                            {routeStops[leg.id]?.length > 0 ? (
+                              <div className="space-y-2">
+                                {routeStops[leg.id].map((stop, stopIndex) => (
+                                  <div key={stopIndex} className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                                    <div className="flex-1">
+                                      <LocationSelector
+                                        label=""
+                                        placeholder="Stop location..."
+                                        defaultOptions={travelSources}
+                                        initialValue={stop.name}
+                                        onSelect={(val) => {
+                                          const norm = normalizeLocation(val);
+                                          if (norm) updateStopInLeg(leg.id, stopIndex, norm);
+                                        }}
+                                      />
+                                    </div>
+                                    <button onClick={() => removeStopFromLeg(leg.id, stopIndex)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">No stops added</p>
                             )}
                           </div>
+
+                          {/* Footer: Dates and Route */}
+                          <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+                            <div className="flex flex-wrap items-center gap-4">
+                              {/* Date Range */}
+                              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-600">
+                                <div className="relative">
+                                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                                  <input
+                                    type="date"
+                                    value={leg.startDate}
+                                    onChange={(e) => updateLeg(leg.id, { startDate: e.target.value })}
+                                    min={index > 0 ? legs[index - 1]?.endDate : new Date().toISOString().split('T')[0]}
+                                    className={`pl-8 pr-2 py-1.5 bg-transparent border-none text-sm focus:ring-0 text-slate-700 dark:text-slate-300 w-36 ${dateErrors[`${leg.id}_start`] ? 'text-red-600 font-medium' : ''}`}
+                                  />
+                                </div>
+                                <ArrowRight className="w-3 h-3 text-slate-400" />
+                                <div className="relative">
+                                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                                  <input
+                                    type="date"
+                                    value={leg.endDate}
+                                    onChange={(e) => updateLeg(leg.id, { endDate: e.target.value })}
+                                    min={leg.startDate}
+                                    className={`pl-8 pr-2 py-1.5 bg-transparent border-none text-sm focus:ring-0 text-slate-700 dark:text-slate-300 w-36 ${dateErrors[`${leg.id}_end`] ? 'text-red-600 font-medium' : ''}`}
+                                  />
+                                </div>
+                              </div>
+                              {(dateErrors[`${leg.id}_start`] || dateErrors[`${leg.id}_end`]) && (
+                                <span className="text-xs text-red-500 font-medium">Check dates</span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              {leg.isReturn && (
+                                <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full flex items-center gap-1">
+                                  🏠 Return
+                                </span>
+                              )}
+                              <button
+                                onClick={() => openRouteModal(leg.id, leg.fromLocation, leg.toLocation)}
+                                disabled={!leg.toLocation}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                              >
+                                <Route className="w-4 h-4" />
+                                <span>{leg.distanceKm > 0 ? 'Recalculate Route' : 'Calculate Route'}</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => removeLeg(leg.id)}
-                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
                       </div>
                     </div>
                   ))}
@@ -334,7 +563,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => addLeg(false)}
-                disabled={!baseOrigin || (legs.length > 0 && !legs[legs.length - 1].toLocationId) || legs.some(l => l.isReturn)}
+                disabled={!baseOrigin || (legs.length > 0 && !legs[legs.length - 1].toLocation) || legs.some(l => l.isReturn)}
                 className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 rounded-lg hover:border-dash-blue hover:text-dash-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
@@ -361,8 +590,11 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Overall Trip:</span>
                   <span className="font-medium text-slate-900 dark:text-white">
-                    {overallStartDate && overallEndDate 
-                      ? `${overallStartDate} → ${overallEndDate} (${Math.ceil((new Date(overallEndDate).getTime() - new Date(overallStartDate).getTime()) / (1000 * 60 * 60 * 24) + 1)} days)`
+                    {overallStartDate && overallEndDate
+                      ? (() => {
+                        const duration = Math.ceil((new Date(overallEndDate).getTime() - new Date(overallStartDate).getTime()) / (1000 * 60 * 60 * 24) + 1);
+                        return `${overallStartDate} → ${overallEndDate} (${duration} ${duration === 1 ? 'day' : 'days'})`;
+                      })()
                       : 'Set dates to see duration'
                     }
                   </span>
@@ -419,7 +651,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
               </div>
             </div>
           </div>
-          
+
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -467,15 +699,13 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
                       key={option.value}
                       type="button"
                       onClick={() => handleExpenseChange(option.value)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
-                        isSelected
-                          ? 'border-dash-blue bg-blue-50 dark:bg-blue-900/20 text-dash-blue'
-                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 text-slate-700 dark:text-slate-300'
-                      }`}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${isSelected
+                        ? 'border-dash-blue bg-blue-50 dark:bg-blue-900/20 text-dash-blue'
+                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 text-slate-700 dark:text-slate-300'
+                        }`}
                     >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                        isSelected ? 'border-dash-blue bg-dash-blue' : 'border-slate-400'
-                      }`}>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-dash-blue bg-dash-blue' : 'border-slate-400'
+                        }`}>
                         {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
                       </div>
                       <span className="text-sm">{option.label}</span>
@@ -500,7 +730,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
               </div>
             </div>
           </div>
-          
+
           <div className="p-6">
             <div className="space-y-3">
               {travelers.map((traveler, index) => (
@@ -552,7 +782,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
               </div>
             </div>
           </div>
-          
+
           <div className="p-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -586,18 +816,17 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
               </div>
             </div>
           </div>
-          
+
           <div className="p-6">
             <div
               onClick={() => fileInputRef.current?.click()}
               onDrop={handleFileDrop}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                dragOver
-                  ? 'border-dash-blue bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
-              }`}
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragOver
+                ? 'border-dash-blue bg-blue-50 dark:bg-blue-900/20'
+                : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
+                }`}
             >
               <input ref={fileInputRef} type="file" multiple onChange={(e) => setUploadedFiles([...uploadedFiles, ...Array.from(e.target.files || [])])} className="hidden" />
               <div className="w-16 h-16 bg-gradient-to-br from-dash-blue to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -635,6 +864,14 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
           </button>
         </div>
       </div>
+      <RouteSelectionModal
+        isOpen={showRouteModal}
+        onClose={() => setShowRouteModal(false)}
+        from={modalLocations?.from || null}
+        to={modalLocations?.to || null}
+        stops={currentRouteLegId ? (routeStops[currentRouteLegId]?.filter(s => s.name !== '') || []) : []}
+        onSelectRoute={handleRouteSelect}
+      />
     </div>
   );
 };

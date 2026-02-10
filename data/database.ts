@@ -322,6 +322,8 @@ export interface TravelSource {
     contactPerson: string;
     contactPhone: string;
     contactEmail: string;
+    latitude: number;
+    longitude: number;
     status: 'active' | 'inactive';
 }
 
@@ -336,6 +338,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Maria L. Cruz',
         contactPhone: '+63 2 8920-0101',
         contactEmail: 'hq@dict.gov.ph',
+        latitude: 14.6515,
+        longitude: 121.0493,
         status: 'active'
     },
     {
@@ -348,6 +352,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Antonio M. Ramos',
         contactPhone: '+63 72 888-1234',
         contactEmail: 'region1@dict.gov.ph',
+        latitude: 16.6159,
+        longitude: 120.3209,
         status: 'active'
     },
     {
@@ -360,6 +366,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Bella S. Tan',
         contactPhone: '+63 78 844-5678',
         contactEmail: 'region2@dict.gov.ph',
+        latitude: 17.6132,
+        longitude: 121.7270,
         status: 'active'
     },
     {
@@ -372,6 +380,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Carlos J. Aquino',
         contactPhone: '+63 45 961-2345',
         contactEmail: 'region3@dict.gov.ph',
+        latitude: 15.0286,
+        longitude: 120.6896,
         status: 'active'
     },
     {
@@ -384,6 +394,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Diana R. Lopez',
         contactPhone: '+63 49 545-6789',
         contactEmail: 'region4a@dict.gov.ph',
+        latitude: 14.2120,
+        longitude: 121.1593,
         status: 'active'
     },
     {
@@ -396,6 +408,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Elena V. Torres',
         contactPhone: '+63 2 8527-1234',
         contactEmail: 'training.manila@dict.gov.ph',
+        latitude: 14.5905,
+        longitude: 120.9780,
         status: 'active'
     },
     {
@@ -408,6 +422,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Roberto C. Tan',
         contactPhone: '+63 32 234-5678',
         contactEmail: 'techhub.cebu@dict.gov.ph',
+        latitude: 10.3297,
+        longitude: 123.9063,
         status: 'active'
     },
     {
@@ -420,6 +436,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Fatima B. Santos',
         contactPhone: '+63 82 227-8901',
         contactEmail: 'techhub.davao@dict.gov.ph',
+        latitude: 7.0984,
+        longitude: 125.6267,
         status: 'active'
     },
     {
@@ -432,6 +450,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Manuel L. Gomez',
         contactPhone: '+63 32 253-4567',
         contactEmail: 'region7@dict.gov.ph',
+        latitude: 10.3157,
+        longitude: 123.8854,
         status: 'active'
     },
     {
@@ -444,6 +464,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Grace A. Palma',
         contactPhone: '+63 74 442-7890',
         contactEmail: 'baguio@dict.gov.ph',
+        latitude: 16.4023,
+        longitude: 120.5960,
         status: 'active'
     },
     {
@@ -456,6 +478,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Jose P. Marcos',
         contactPhone: '+63 33 337-1234',
         contactEmail: 'techhub.iloilo@dict.gov.ph',
+        latitude: 10.7202,
+        longitude: 122.5621,
         status: 'active'
     },
     {
@@ -468,6 +492,8 @@ export const travelSources: TravelSource[] = [
         contactPerson: 'Amina S. Hassan',
         contactPhone: '+63 62 991-5678',
         contactEmail: 'techhub.zamboanga@dict.gov.ph',
+        latitude: 6.9214,
+        longitude: 122.0790,
         status: 'active'
     }
 ];

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Users, CheckCircle2, FileText, RefreshCcw } from 'lucide-react';
 import { Page } from '../types';
-import { getDashboardStats, employees, approvals } from '../data/database';
+import { getDashboardStats, employees, approvals, Approval } from '../data/database';
+import ApprovalDetails from './ApprovalDetails';
 
 interface DashboardProps {
   onSignOut?: () => void;
@@ -9,6 +10,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const [selectedApproval, setSelectedApproval] = React.useState<Approval | null>(null);
   const stats = getDashboardStats();
 
   const statCards = [
@@ -57,6 +59,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     .filter(a => a.status === 'approved')
     .sort((a, b) => new Date(b.processedAt || 0).getTime() - new Date(a.processedAt || 0).getTime())
     .slice(0, 3);
+
+  if (selectedApproval) {
+    return (
+      <ApprovalDetails
+        approval={selectedApproval}
+        onNavigate={onNavigate || (() => { })}
+        onBack={() => setSelectedApproval(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -116,7 +128,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           {recentApprovals.length > 0 ? (
             <div className="space-y-3">
               {recentApprovals.map((approval) => (
-                <div key={approval.id} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                <div
+                  key={approval.id}
+                  onClick={() => setSelectedApproval(approval)}
+                  className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
                   <img
                     src={approval.requestorAvatar}
                     alt={approval.requestorName}

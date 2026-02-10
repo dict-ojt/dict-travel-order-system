@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Plus, FileText, Check, Clock, X, LayoutGrid, Table as TableIcon, MoreHorizontal, MapPin, Calendar, Car } from 'lucide-react';
+import { Search, Plus, FileText, Check, Clock, X, LayoutGrid, Table as TableIcon, MoreHorizontal, MapPin, Calendar, Car, Eye, Edit, Trash2 } from 'lucide-react';
 import { Page } from '../types';
 import { travelOrders, getDashboardStats, TravelOrder } from '../data/database';
+import TravelOrderDetails from './TravelOrderDetails';
 
 interface TravelOrdersProps { onNavigate?: (page: Page) => void; }
 
@@ -9,6 +10,8 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'completed'>('all');
+  const [selectedOrder, setSelectedOrder] = useState<TravelOrder | null>(null);
+  const [activeActionId, setActiveActionId] = useState<string | null>(null);
   const stats = getDashboardStats();
 
   const filteredOrders = travelOrders.filter(o => {
@@ -30,6 +33,16 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
     }
   };
 
+  if (selectedOrder) {
+    return (
+      <TravelOrderDetails
+        order={selectedOrder}
+        onNavigate={onNavigate || (() => { })}
+        onBack={() => setSelectedOrder(null)}
+      />
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -42,7 +55,7 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
             <button onClick={() => setViewMode('simple')} className={`p-2 rounded-md ${viewMode === 'simple' ? 'bg-white dark:bg-slate-700 shadow text-dash-blue' : 'text-slate-500'}`}><TableIcon className="w-4 h-4" /></button>
             <button onClick={() => setViewMode('detailed')} className={`p-2 rounded-md ${viewMode === 'detailed' ? 'bg-white dark:bg-slate-700 shadow text-dash-blue' : 'text-slate-500'}`}><LayoutGrid className="w-4 h-4" /></button>
           </div>
-          <button 
+          <button
             onClick={() => onNavigate?.(Page.CREATE_TRAVEL_ORDER)}
             className="flex items-center gap-2 px-4 py-2.5 bg-dash-blue text-white rounded-lg text-sm font-medium shadow-sm hover:bg-blue-600 transition-all"
           >
@@ -98,13 +111,64 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {filteredOrders.map(o => (
-                  <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <tr
+                    key={o.id}
+                    onClick={() => setSelectedOrder(o)}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                  >
                     <td className="py-3 px-4"><span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs font-medium">{o.orderNumber}</span></td>
                     <td className="py-3 px-4"><div className="flex items-center gap-2"><img src={o.employeeAvatar} className="w-6 h-6 rounded-full" alt={o.employeeName} /><span className="text-sm">{o.employeeName}</span></div></td>
                     <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">{o.destinationName}</td>
                     <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">{o.departureDate}</td>
                     <td className="py-3 px-4"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(o.status)}`}>{o.status}</span></td>
-                    <td className="py-3 px-4"><button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><MoreHorizontal className="w-4 h-4 text-slate-400" /></button></td>
+                    <td className="py-3 px-4 relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveActionId(activeActionId === o.id ? null : o.id);
+                        }}
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-dash-blue"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+
+                      {activeActionId === o.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveActionId(null);
+                            }}
+                          />
+                          <div className="absolute right-0 top-10 z-20 w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveActionId(null);
+                                onNavigate?.(Page.CREATE_TRAVEL_ORDER);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                            >
+                              <Edit className="w-3 h-3" /> Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveActionId(null);
+                                if (window.confirm('Are you sure you want to delete this order?')) {
+                                  // In a real app, delete logic here
+                                  console.log('Deleted order', o.id);
+                                }
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                            >
+                              <Trash2 className="w-3 h-3" /> Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -114,7 +178,11 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredOrders.map(o => (
-            <div key={o.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-md transition-all">
+            <div
+              key={o.id}
+              onClick={() => setSelectedOrder(o)}
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3"><img src={o.employeeAvatar} alt={o.employeeName} className="w-10 h-10 rounded-full" /><div><p className="text-sm font-semibold text-slate-900 dark:text-white">{o.employeeName}</p><p className="text-xs text-slate-500">{o.divisionCode}</p></div></div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(o.status)}`}>{o.status}</span>
