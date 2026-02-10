@@ -102,53 +102,61 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     };
   }, []);
 
-  // Handle initial start point from previous leg
-  const hasSetInitialStartPoint = useRef(false);
+  // Handle initial start and end points from previous leg (for sequential legs and return legs)
+  const hasSetInitialPoints = useRef(false);
+  
+  // Reset ref when component mounts
   useEffect(() => {
-    if (!initialStartPoint?.name || hasSetInitialStartPoint.current) return;
+    hasSetInitialPoints.current = false;
+  }, []);
+  useEffect(() => {
+    if (hasSetInitialPoints.current) return;
     if (!mapInstanceRef.current) return;
-    if (points.some(p => p.type === 'start')) return;
     
-    hasSetInitialStartPoint.current = true;
-    const startPoint: RoutePoint = {
-      id: Date.now().toString(),
-      lat: initialStartPoint.lat,
-      lng: initialStartPoint.lng,
-      name: initialStartPoint.name,
-      type: 'start'
-    };
-    const newPoints = [startPoint];
+    const hasStart = points.some(p => p.type === 'start');
+    const hasEnd = points.some(p => p.type === 'end');
+    
+    // Only proceed if we have initial points to set and they're not already set
+    const shouldSetStart = initialStartPoint?.name && !hasStart;
+    const shouldSetEnd = initialEndPoint?.name && !hasEnd;
+    
+    if (!shouldSetStart && !shouldSetEnd) return;
+    
+    hasSetInitialPoints.current = true;
+    
+    const newPoints: RoutePoint[] = [...points];
+    
+    if (shouldSetStart) {
+      newPoints.push({
+        id: Date.now().toString(),
+        lat: initialStartPoint.lat,
+        lng: initialStartPoint.lng,
+        name: initialStartPoint.name,
+        type: 'start'
+      });
+    }
+    
+    if (shouldSetEnd) {
+      newPoints.push({
+        id: (Date.now() + 1).toString(),
+        lat: initialEndPoint.lat,
+        lng: initialEndPoint.lng,
+        name: initialEndPoint.name,
+        type: 'end'
+      });
+    }
+    
     setPoints(newPoints);
+    
     // Delay to ensure map is fully initialized
     setTimeout(() => {
       updateMarkersAndRoute(newPoints);
-      mapInstanceRef.current?.panTo([initialStartPoint.lat, initialStartPoint.lng]);
-    }, 100);
-  }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng]);
-
-  // Handle initial end point for return legs
-  const hasSetInitialEndPoint = useRef(false);
-  useEffect(() => {
-    if (!initialEndPoint?.name || hasSetInitialEndPoint.current) return;
-    if (!mapInstanceRef.current) return;
-    if (points.some(p => p.type === 'end')) return;
-    
-    hasSetInitialEndPoint.current = true;
-    const endPoint: RoutePoint = {
-      id: (Date.now() + 1).toString(),
-      lat: initialEndPoint.lat,
-      lng: initialEndPoint.lng,
-      name: initialEndPoint.name,
-      type: 'end'
-    };
-    const newPoints = [...points, endPoint];
-    setPoints(newPoints);
-    // Delay to ensure map is fully initialized
-    setTimeout(() => {
-      updateMarkersAndRoute(newPoints);
+      if (initialStartPoint) {
+        mapInstanceRef.current?.panTo([initialStartPoint.lat, initialStartPoint.lng]);
+      }
       onClearInitialStartPoint?.();
     }, 100);
-  }, [initialEndPoint?.name, initialEndPoint?.lat, initialEndPoint?.lng]);
+  }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng, initialEndPoint?.name, initialEndPoint?.lat, initialEndPoint?.lng]);
 
   const handleMapClickRef = useRef(async (lat: number, lng: number) => {
     // This will be replaced after initialization
