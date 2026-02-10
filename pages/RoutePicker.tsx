@@ -609,8 +609,6 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
           {/* Waypoints */}
           {waypoints.map((waypoint, index) => (
             <div key={waypoint.id} className="relative pl-4">
-              {/* Connector line */}
-              <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
               
               {pickerMode === 'waypoint' && pickerIndex === index + 1 ? (
                 // Edit mode - show input
@@ -716,7 +714,6 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
             pickerMode === 'waypoint' && pickerIndex > waypoints.length ? (
               // New stop input mode
               <div className="relative pl-4">
-                <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
                 <div className="w-full p-3 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
@@ -767,8 +764,6 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
               // Add stop button - show if we have start but no end, OR if we have both
               (!endPoint || (startPoint && endPoint)) && (
                 <div className="relative pl-4">
-                  {/* Connector line from above */}
-                  <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
                   <button
                     onClick={addStop}
                     className="w-full flex items-center gap-2 p-3 border-2 border-dashed border-slate-600 text-slate-400 rounded-xl hover:border-dash-blue hover:text-dash-blue transition-colors"
@@ -783,8 +778,6 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
 
           {/* End Point */}
           <div className="relative">
-            {/* Show connector if there are waypoints, or add stop is active, or start exists (since add stop button shows when start exists) */}
-            {(waypoints.length > 0 || (pickerMode === 'waypoint' && pickerIndex > waypoints.length) || (startPoint && !endPoint)) && <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />}
             {pickerMode === 'end' ? (
               // Edit mode - show input
               <div className="w-full p-4 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
