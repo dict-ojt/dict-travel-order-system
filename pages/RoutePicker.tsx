@@ -184,8 +184,14 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     if (!pickerMode) return;
 
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&countrycodes=ph`);
       const data = await response.json();
+      
+      // Only allow locations within Philippines
+      if (data.address?.country_code !== 'ph') {
+        return;
+      }
+      
       const name = data.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       
       if (pickerMode === 'start') {
@@ -468,7 +474,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     }
 
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ph`;
       const response = await fetch(url);
       const results: NominatimResult[] = await response.json();
       setSearchResults(results);
@@ -567,8 +573,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   };
 
   const getPickerTitle = () => {
-    if (pickerMode === 'start') return isReturnLeg ? 'Return starting point (locked)' : 'Set starting point';
-    if (pickerMode === 'end') return isReturnLeg ? 'Return destination (locked)' : 'Set destination';
+    if (pickerMode === 'start') return lockStartPoint ? 'Starting point (locked)' : 'Set starting point';
+    if (pickerMode === 'end') return lockEndPoint ? 'Destination (locked)' : 'Set destination';
     if (pickerMode === 'waypoint') return `Add stop ${pickerIndex}`;
     return isReturnLeg ? 'Plan return route' : 'Plan your route';
   };
@@ -598,7 +604,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         <div className="flex-1 p-4 space-y-3 overflow-y-auto">
           {/* Start Point */}
           <div className="relative">
-            {pickerMode === 'start' ? (
+            {pickerMode === 'start' && !lockStartPoint ? (
               // Edit mode - show input
               <div className="w-full p-4 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
                 <div className="flex items-center gap-3 mb-3">
@@ -843,7 +849,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
 
           {/* End Point */}
           <div className="relative">
-            {pickerMode === 'end' ? (
+            {pickerMode === 'end' && !lockEndPoint ? (
               // Edit mode - show input
               <div className="w-full p-4 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
                 <div className="flex items-center gap-3 mb-3">
