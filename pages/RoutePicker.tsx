@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, MapPin, X, Plus, Trash2, Check, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowLeft, MapPin, X, Plus, Trash2, Check, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 import { Page, RouteLeg } from '../types';
 
 interface RoutePickerProps {
@@ -74,6 +74,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [pickerMode, setPickerMode] = useState<PickerMode>(null);
   const [pickerIndex, setPickerIndex] = useState<number>(-1);
   const [startDate, setStartDate] = useState('');
@@ -502,21 +503,41 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     }
   };
 
-  const searchLocation = async (query: string) => {
-    if (query.length < 3) {
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (searchQuery.length < 3) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ph`;
-      const response = await fetch(url);
-      const results: NominatimResult[] = await response.json();
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Search error:', error);
-    }
-  };
+    setIsSearching(true);
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5&countrycodes=ph`;
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error('Network response was not ok');
+        const results: NominatimResult[] = await response.json();
+        setSearchResults(results);
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('Search error:', error);
+          setSearchResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearching(false);
+        }
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [searchQuery]);
 
   const selectSearchResult = (result: NominatimResult) => {
     const lat = parseFloat(result.lat);
@@ -657,13 +678,17 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
-                        searchLocation(e.target.value);
                       }}
                       placeholder="Search starting point..."
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
                       autoFocus
                     />
                   </div>
+                  {isSearching && (
+                    <div className="p-1">
+                      <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                    </div>
+                  )}
                   <button
                     onClick={() => {
                       setPickerMode(null);
@@ -758,13 +783,17 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                         value={searchQuery}
                         onChange={(e) => {
                           setSearchQuery(e.target.value);
-                          searchLocation(e.target.value);
                         }}
                         placeholder={`Search stop ${index + 1}...`}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
                         autoFocus
                       />
                     </div>
+                    {isSearching && (
+                      <div className="p-1">
+                        <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         setPickerMode(null);
@@ -853,13 +882,17 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                         value={searchQuery}
                         onChange={(e) => {
                           setSearchQuery(e.target.value);
-                          searchLocation(e.target.value);
                         }}
                         placeholder={`Search stop ${waypoints.length + 1}...`}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
                         autoFocus
                       />
                     </div>
+                    {isSearching && (
+                      <div className="p-1">
+                        <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         setPickerMode(null);
@@ -919,13 +952,17 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
-                        searchLocation(e.target.value);
                       }}
                       placeholder="Search destination..."
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
                       autoFocus
                     />
                   </div>
+                  {isSearching && (
+                    <div className="p-1">
+                      <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                    </div>
+                  )}
                   <button
                     onClick={() => {
                       setPickerMode(null);
