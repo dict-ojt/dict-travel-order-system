@@ -7,6 +7,10 @@ interface RoutePickerProps {
   onSelectLeg: (leg: RouteLeg) => void;
   initialStartPoint?: { name: string; lat: number; lng: number } | null;
   onClearInitialStartPoint?: () => void;
+  initialEndPoint?: { name: string; lat: number; lng: number } | null;
+  lockStartPoint?: boolean;
+  lockEndPoint?: boolean;
+  isReturnLeg?: boolean;
 }
 
 interface OSRMRouteResponse {
@@ -42,7 +46,16 @@ interface RoutePoint {
 
 type PickerMode = 'start' | 'end' | 'waypoint' | null;
 
-const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, initialStartPoint, onClearInitialStartPoint }) => {
+const RoutePicker: React.FC<RoutePickerProps> = ({ 
+  onNavigate, 
+  onSelectLeg, 
+  initialStartPoint, 
+  onClearInitialStartPoint,
+  initialEndPoint,
+  lockStartPoint = false,
+  lockEndPoint = false,
+  isReturnLeg = false
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const routeLineRef = useRef<any>(null);
@@ -109,10 +122,33 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
     // Delay to ensure map is fully initialized
     setTimeout(() => {
       updateMarkersAndRoute(newPoints);
-      onClearInitialStartPoint?.();
       mapInstanceRef.current?.panTo([initialStartPoint.lat, initialStartPoint.lng]);
     }, 100);
   }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng]);
+
+  // Handle initial end point for return legs
+  const hasSetInitialEndPoint = useRef(false);
+  useEffect(() => {
+    if (!initialEndPoint?.name || hasSetInitialEndPoint.current) return;
+    if (!mapInstanceRef.current) return;
+    if (points.some(p => p.type === 'end')) return;
+    
+    hasSetInitialEndPoint.current = true;
+    const endPoint: RoutePoint = {
+      id: (Date.now() + 1).toString(),
+      lat: initialEndPoint.lat,
+      lng: initialEndPoint.lng,
+      name: initialEndPoint.name,
+      type: 'end'
+    };
+    const newPoints = [...points, endPoint];
+    setPoints(newPoints);
+    // Delay to ensure map is fully initialized
+    setTimeout(() => {
+      updateMarkersAndRoute(newPoints);
+      onClearInitialStartPoint?.();
+    }, 100);
+  }, [initialEndPoint?.name, initialEndPoint?.lat, initialEndPoint?.lng]);
 
   const handleMapClickRef = useRef(async (lat: number, lng: number) => {
     // This will be replaced after initialization
@@ -505,7 +541,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
       distanceKm: Math.round(routeInfo.distance * 10) / 10,
       durationMin: Math.round(routeInfo.duration),
       startDate,
-      endDate
+      endDate,
+      isReturn: isReturnLeg
     };
 
     onSelectLeg(leg);
@@ -522,10 +559,10 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
   };
 
   const getPickerTitle = () => {
-    if (pickerMode === 'start') return 'Set starting point';
-    if (pickerMode === 'end') return 'Set destination';
+    if (pickerMode === 'start') return isReturnLeg ? 'Return starting point (locked)' : 'Set starting point';
+    if (pickerMode === 'end') return isReturnLeg ? 'Return destination (locked)' : 'Set destination';
     if (pickerMode === 'waypoint') return `Add stop ${pickerIndex}`;
-    return 'Plan your route';
+    return isReturnLeg ? 'Plan return route' : 'Plan your route';
   };
 
   const startPoint = points.find(p => p.type === 'start');
@@ -603,8 +640,9 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
               // Display mode - show card
               <div className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all">
                 <button
-                  onClick={() => setPickerMode('start')}
-                  className="flex items-center gap-3 flex-1 text-left"
+                  onClick={() => !lockStartPoint && setPickerMode('start')}
+                  disabled={lockStartPoint}
+                  className="flex items-center gap-3 flex-1 text-left disabled:cursor-default"
                 >
                   <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
                     A
@@ -620,7 +658,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
                     )}
                   </div>
                 </button>
-                {startPoint && (
+                {startPoint && !lockStartPoint && (
                   <button
                     onClick={() => removePoint(startPoint.id)}
                     className="p-1 hover:bg-slate-600 rounded"
@@ -847,8 +885,9 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
               // Display mode - show card
               <div className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all">
                 <button
-                  onClick={() => setPickerMode('end')}
-                  className="flex items-center gap-3 flex-1 text-left"
+                  onClick={() => !lockEndPoint && setPickerMode('end')}
+                  disabled={lockEndPoint}
+                  className="flex items-center gap-3 flex-1 text-left disabled:cursor-default"
                 >
                   <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
                     B
@@ -864,7 +903,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
                     )}
                   </div>
                 </button>
-                {endPoint && (
+                {endPoint && !lockEndPoint && (
                   <button
                     onClick={() => removePoint(endPoint.id)}
                     className="p-1 hover:bg-slate-600 rounded"

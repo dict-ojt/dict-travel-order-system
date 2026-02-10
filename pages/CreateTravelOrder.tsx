@@ -23,7 +23,7 @@ interface CreateTravelOrderProps {
   onNavigate: (page: Page) => void;
   initialRouteLeg?: RouteLeg | null;
   onClearRouteLeg?: () => void;
-  onOpenRoutePicker?: (previousLeg: RouteLeg | null) => void;
+  onOpenRoutePicker?: (previousLeg: RouteLeg | null, isReturn?: boolean, returnEndPoint?: { name: string; lat: number; lng: number } | null) => void;
   legs: TravelLeg[];
   setLegs: React.Dispatch<React.SetStateAction<TravelLeg[]>>;
 }
@@ -52,7 +52,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
         startDate: initialRouteLeg.startDate || '',
         endDate: initialRouteLeg.endDate || '',
         distanceKm: Math.round(initialRouteLeg.distanceKm),
-        isReturn: false,
+        isReturn: initialRouteLeg.isReturn || false,
         fromLocationName: initialRouteLeg.fromLocation.name,
         toLocationName: initialRouteLeg.toLocation.name,
         fromLat: initialRouteLeg.fromLocation.lat,
@@ -403,7 +403,26 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
               </button>
               {legs.length > 0 && !legs.some(l => l.isReturn) && (
                 <button
-                  onClick={() => addLeg(true)}
+                  onClick={() => {
+                    const prevLeg = legs[legs.length - 1];
+                    const firstLeg = legs[0];
+                    const prevRouteLeg = prevLeg ? {
+                      fromLocation: { name: '', lat: 0, lng: 0 },
+                      toLocation: {
+                        name: prevLeg.toLocationName || '',
+                        lat: prevLeg.toLat || 0,
+                        lng: prevLeg.toLng || 0
+                      },
+                      distanceKm: 0,
+                      durationMin: 0
+                    } : null;
+                    const returnEndPoint = firstLeg ? {
+                      name: firstLeg.fromLocationName || '',
+                      lat: firstLeg.fromLat || 0,
+                      lng: firstLeg.fromLng || 0
+                    } : null;
+                    onOpenRoutePicker?.(prevRouteLeg, true, returnEndPoint);
+                  }}
                   className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 rounded-lg hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm font-medium"
                 >
                   <Plus className="w-4 h-4" />

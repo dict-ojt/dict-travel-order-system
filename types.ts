@@ -54,6 +54,7 @@ export interface RouteLeg {
   durationMin: number;
   startDate?: string;
   endDate?: string;
+  isReturn?: boolean;
 }
 
 export interface Division {

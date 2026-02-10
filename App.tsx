@@ -23,6 +23,8 @@ const App: React.FC = () => {
   });
   const [selectedRouteLeg, setSelectedRouteLeg] = useState<RouteLeg | null>(null);
   const [previousLegForNext, setPreviousLegForNext] = useState<RouteLeg | null>(null);
+  const [isReturnLeg, setIsReturnLeg] = useState(false);
+  const [returnEndPoint, setReturnEndPoint] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [travelLegs, setTravelLegs] = useState<Array<{
     id: string;
     fromLocationId: string;
@@ -76,8 +78,10 @@ const App: React.FC = () => {
           onNavigate={setCurrentPage} 
           initialRouteLeg={selectedRouteLeg}
           onClearRouteLeg={() => setSelectedRouteLeg(null)}
-          onOpenRoutePicker={(prevLeg) => {
+          onOpenRoutePicker={(prevLeg, isReturn, returnEndPoint) => {
             setPreviousLegForNext(prevLeg);
+            setIsReturnLeg(isReturn || false);
+            setReturnEndPoint(returnEndPoint || null);
             setCurrentPage(Page.ROUTE_PICKER);
           }}
           legs={travelLegs}
@@ -89,7 +93,15 @@ const App: React.FC = () => {
           onNavigate={setCurrentPage} 
           onSelectLeg={(leg) => setSelectedRouteLeg(leg)}
           initialStartPoint={previousLegForNext?.toLocation || null}
-          onClearInitialStartPoint={() => setPreviousLegForNext(null)}
+          onClearInitialStartPoint={() => {
+            setPreviousLegForNext(null);
+            setIsReturnLeg(false);
+            setReturnEndPoint(null);
+          }}
+          initialEndPoint={returnEndPoint}
+          lockStartPoint={!!previousLegForNext?.toLocation?.name}
+          lockEndPoint={!!returnEndPoint?.name}
+          isReturnLeg={isReturnLeg}
         />
       );
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
