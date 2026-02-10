@@ -1131,7 +1131,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         {/* Loading indicator */}
         {isLoading && (
           <div className="absolute top-4 right-4 bg-slate-800 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-dash-blue border-t-transparent rounded-full animate-spin" />
+            <Loader2 className="w-4 h-4 text-dash-blue animate-spin" />
             <span className="text-sm text-white">Calculating route...</span>
           </div>
         )}
