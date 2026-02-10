@@ -6,6 +6,7 @@ export enum Page {
   TRAVEL_WORKFLOWS = 'travel_workflows',
   EMPLOYEES = 'employees',
   APPROVALS = 'approvals',
+  APPROVAL_DETAILS = 'approval_details',
   TRAVEL_ORDERS = 'travel_orders',
   CREATE_TRAVEL_ORDER = 'create_travel_order',
   USERS = 'users',

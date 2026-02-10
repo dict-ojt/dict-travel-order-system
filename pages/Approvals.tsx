@@ -2,13 +2,25 @@ import React, { useState } from 'react';
 import { Search, Clock, CheckCircle2, XCircle, Timer, LayoutGrid, List, MapPin, Calendar } from 'lucide-react';
 import { Page } from '../types';
 import { approvals, getDashboardStats, Approval } from '../data/database';
+import ApprovalDetails from './ApprovalDetails';
 
 interface ApprovalsProps { onNavigate?: (page: Page) => void; }
 
-const Approvals: React.FC<ApprovalsProps> = () => {
+const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
+  const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
   const stats = getDashboardStats();
+
+  if (selectedApproval) {
+    return (
+      <ApprovalDetails 
+        approval={selectedApproval} 
+        onNavigate={onNavigate || (() => {})} 
+        onBack={() => setSelectedApproval(null)} 
+      />
+    );
+  }
 
   const filteredApprovals = approvals.filter(a =>
     a.requestorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -64,7 +76,11 @@ const Approvals: React.FC<ApprovalsProps> = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {filteredApprovals.map(a => (
-              <div key={a.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors grid grid-cols-[1fr_200px_100px_140px] items-center gap-4">
+              <div 
+                key={a.id} 
+                onClick={() => setSelectedApproval(a)}
+                className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors grid grid-cols-[1fr_200px_100px_140px] items-center gap-4 cursor-pointer"
+              >
                 <div className="flex items-center gap-4 min-w-0">
                   <img src={a.requestorAvatar} alt={a.requestorName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                   <div className="min-w-0">
@@ -87,7 +103,11 @@ const Approvals: React.FC<ApprovalsProps> = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredApprovals.map(a => (
-            <div key={a.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+            <div 
+              key={a.id} 
+              onClick={() => setSelectedApproval(a)}
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3"><img src={a.requestorAvatar} alt={a.requestorName} className="w-12 h-12 rounded-full" /><div><p className="text-sm font-semibold text-slate-900 dark:text-white">{a.requestorName}</p><p className="text-xs text-slate-500">{a.requestorDivision}</p></div></div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(a.status)}`}>{a.status}</span>

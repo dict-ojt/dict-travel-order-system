@@ -55,7 +55,7 @@ const App: React.FC = () => {
       case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} />;
       case Page.CREATE_TRAVEL_ORDER: return <CreateTravelOrder onNavigate={setCurrentPage} />;
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
-      case Page.APPROVALS: return <Approvals />;
+      case Page.APPROVALS: return <Approvals onNavigate={setCurrentPage} />;
       case Page.CALENDAR: return <CalendarPage />;
       case Page.DIVISIONS: return <Divisions />;
       case Page.TRAVEL_SOURCES: return <TravelSources />;
