@@ -5,6 +5,8 @@ import { Page, RouteLeg } from '../types';
 interface RoutePickerProps {
   onNavigate: (page: Page) => void;
   onSelectLeg: (leg: RouteLeg) => void;
+  initialStartPoint?: { name: string; lat: number; lng: number } | null;
+  onClearInitialStartPoint?: () => void;
 }
 
 interface OSRMRouteResponse {
@@ -40,7 +42,7 @@ interface RoutePoint {
 
 type PickerMode = 'start' | 'end' | 'waypoint' | null;
 
-const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) => {
+const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, initialStartPoint, onClearInitialStartPoint }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const routeLineRef = useRef<any>(null);
@@ -86,6 +88,27 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Handle initial start point from previous leg
+  const hasSetInitialStartPoint = useRef(false);
+  useEffect(() => {
+    if (!initialStartPoint?.name || hasSetInitialStartPoint.current) return;
+    if (!mapInstanceRef.current) return;
+    if (points.some(p => p.type === 'start')) return;
+    
+    hasSetInitialStartPoint.current = true;
+    const startPoint: RoutePoint = {
+      id: Date.now().toString(),
+      lat: initialStartPoint.lat,
+      lng: initialStartPoint.lng,
+      name: initialStartPoint.name,
+      type: 'start'
+    };
+    setPoints([startPoint]);
+    updateMarkersAndRoute([startPoint]);
+    onClearInitialStartPoint?.();
+    mapInstanceRef.current.panTo([initialStartPoint.lat, initialStartPoint.lng]);
+  }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng]);
 
   const handleMapClickRef = useRef(async (lat: number, lng: number) => {
     // This will be replaced after initialization
@@ -573,36 +596,35 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
                 )}
               </div>
             ) : (
-              // Display mode - show button
-              <button
-                onClick={() => setPickerMode('start')}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all"
-              >
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
-                  A
-                </div>
-                <div className="flex-1 text-left">
-                  {startPoint ? (
-                    <>
-                      <p className="text-sm font-medium text-white">{startPoint.name}</p>
-                      <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
-                    </>
-                  ) : (
-                    <p className="text-sm text-slate-400">Choose starting point</p>
-                  )}
-                </div>
+              // Display mode - show card
+              <div className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all">
+                <button
+                  onClick={() => setPickerMode('start')}
+                  className="flex items-center gap-3 flex-1 text-left"
+                >
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                    A
+                  </div>
+                  <div className="flex-1">
+                    {startPoint ? (
+                      <>
+                        <p className="text-sm font-medium text-white">{startPoint.name}</p>
+                        <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-slate-400">Choose starting point</p>
+                    )}
+                  </div>
+                </button>
                 {startPoint && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removePoint(startPoint.id);
-                    }}
+                    onClick={() => removePoint(startPoint.id)}
                     className="p-1 hover:bg-slate-600 rounded"
                   >
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
                 )}
-              </button>
+              </div>
             )}
           </div>
 
@@ -658,53 +680,46 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
                   )}
                 </div>
               ) : (
-                // Display mode - show button
-                <button
-                  onClick={() => {
-                    setPickerMode('waypoint');
-                    setPickerIndex(index + 1);
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all"
-                >
-                  <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-white">{waypoint.name}</p>
-                    <p className="text-xs text-slate-400">{waypoint.lat.toFixed(4)}, {waypoint.lng.toFixed(4)}</p>
-                  </div>
+                // Display mode - show card
+                <div className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all">
+                  <button
+                    onClick={() => {
+                      setPickerMode('waypoint');
+                      setPickerIndex(index + 1);
+                    }}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{waypoint.name}</p>
+                      <p className="text-xs text-slate-400">{waypoint.lat.toFixed(4)}, {waypoint.lng.toFixed(4)}</p>
+                    </div>
+                  </button>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        movePoint(waypoint.id, 'up');
-                      }}
+                      onClick={() => movePoint(waypoint.id, 'up')}
                       disabled={index === 0}
                       className="p-1 hover:bg-slate-600 rounded disabled:opacity-30"
                     >
                       <ArrowUp className="w-3 h-3 text-slate-400" />
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        movePoint(waypoint.id, 'down');
-                      }}
+                      onClick={() => movePoint(waypoint.id, 'down')}
                       disabled={index === waypoints.length - 1}
                       className="p-1 hover:bg-slate-600 rounded disabled:opacity-30"
                     >
                       <ArrowDown className="w-3 h-3 text-slate-400" />
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removePoint(waypoint.id);
-                      }}
+                      onClick={() => removePoint(waypoint.id)}
                       className="p-1 hover:bg-slate-600 rounded"
                     >
                       <X className="w-4 h-4 text-slate-400" />
                     </button>
                   </div>
-                </button>
+                </div>
               )}
             </div>
           ))}
@@ -825,36 +840,35 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
                 )}
               </div>
             ) : (
-              // Display mode - show button
-              <button
-                onClick={() => setPickerMode('end')}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all"
-              >
-                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
-                  B
-                </div>
-                <div className="flex-1 text-left">
-                  {endPoint ? (
-                    <>
-                      <p className="text-sm font-medium text-white">{endPoint.name}</p>
-                      <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
-                    </>
-                  ) : (
-                    <p className="text-sm text-slate-400">Choose destination</p>
-                  )}
-                </div>
+              // Display mode - show card
+              <div className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all">
+                <button
+                  onClick={() => setPickerMode('end')}
+                  className="flex items-center gap-3 flex-1 text-left"
+                >
+                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                    B
+                  </div>
+                  <div className="flex-1">
+                    {endPoint ? (
+                      <>
+                        <p className="text-sm font-medium text-white">{endPoint.name}</p>
+                        <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-slate-400">Choose destination</p>
+                    )}
+                  </div>
+                </button>
                 {endPoint && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removePoint(endPoint.id);
-                    }}
+                    onClick={() => removePoint(endPoint.id)}
                     className="p-1 hover:bg-slate-600 rounded"
                   >
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
                 )}
-              </button>
+              </div>
             )}
           </div>
 

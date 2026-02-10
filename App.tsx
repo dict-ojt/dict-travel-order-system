@@ -22,6 +22,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('theme') as any) || 'system';
   });
   const [selectedRouteLeg, setSelectedRouteLeg] = useState<RouteLeg | null>(null);
+  const [previousLegForNext, setPreviousLegForNext] = useState<RouteLeg | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -60,12 +61,18 @@ const App: React.FC = () => {
           onNavigate={setCurrentPage} 
           initialRouteLeg={selectedRouteLeg}
           onClearRouteLeg={() => setSelectedRouteLeg(null)}
+          onOpenRoutePicker={(prevLeg) => {
+            setPreviousLegForNext(prevLeg);
+            setCurrentPage(Page.ROUTE_PICKER);
+          }}
         />
       );
       case Page.ROUTE_PICKER: return (
         <RoutePicker 
           onNavigate={setCurrentPage} 
           onSelectLeg={(leg) => setSelectedRouteLeg(leg)}
+          initialStartPoint={previousLegForNext?.toLocation || null}
+          onClearInitialStartPoint={() => setPreviousLegForNext(null)}
         />
       );
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
