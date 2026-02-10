@@ -511,7 +511,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
       <div className="w-full max-w-md bg-slate-800 border-r border-slate-700 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-slate-700">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => onNavigate(Page.CREATE_TRAVEL_ORDER)}
               className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
@@ -520,81 +520,90 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
             </button>
             <h1 className="text-lg font-semibold text-white">{getPickerTitle()}</h1>
           </div>
-
-          {/* Search */}
-          {pickerMode && (
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  searchLocation(e.target.value);
-                }}
-                placeholder="Search location..."
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue"
-                autoFocus
-              />
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-10 max-h-64 overflow-y-auto">
-                  {searchResults.map((result) => (
-                    <button
-                      key={result.place_id}
-                      onClick={() => selectSearchResult(result)}
-                      className="w-full px-4 py-3 text-left hover:bg-slate-600 border-b border-slate-600 last:border-0"
-                    >
-                      <p className="text-sm text-white truncate">{result.display_name}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Points List */}
         <div className="flex-1 p-4 space-y-3 overflow-y-auto">
           {/* Start Point */}
           <div className="relative">
-            <button
-              onClick={() => {
-                if (pickerMode === 'start') {
-                  setPickerMode(null);
-                } else {
-                  setPickerMode('start');
-                }
-              }}
-              className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                pickerMode === 'start'
-                  ? 'border-dash-blue bg-dash-blue/10'
-                  : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
-              }`}
-            >
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
-                A
-              </div>
-              <div className="flex-1 text-left">
-                {startPoint ? (
-                  <>
-                    <p className="text-sm font-medium text-white">{startPoint.name}</p>
-                    <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-slate-400">Choose starting point</p>
+            {pickerMode === 'start' ? (
+              // Edit mode - show input
+              <div className="w-full p-4 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                    A
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        searchLocation(e.target.value);
+                      }}
+                      placeholder="Search starting point..."
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPickerMode(null);
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                    className="p-1 hover:bg-slate-600 rounded"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
+                {/* Search results */}
+                {searchResults.length > 0 && (
+                  <div className="bg-slate-700 border border-slate-600 rounded-lg max-h-48 overflow-y-auto">
+                    {searchResults.map((result) => (
+                      <button
+                        key={result.place_id}
+                        onClick={() => selectSearchResult(result)}
+                        className="w-full px-3 py-2 text-left hover:bg-slate-600 border-b border-slate-600 last:border-0"
+                      >
+                        <p className="text-sm text-white truncate">{result.display_name}</p>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-              {startPoint && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removePoint(startPoint.id);
-                  }}
-                  className="p-1 hover:bg-slate-600 rounded"
-                >
-                  <X className="w-4 h-4 text-slate-400" />
-                </button>
-              )}
-            </button>
+            ) : (
+              // Display mode - show button
+              <button
+                onClick={() => setPickerMode('start')}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all"
+              >
+                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                  A
+                </div>
+                <div className="flex-1 text-left">
+                  {startPoint ? (
+                    <>
+                      <p className="text-sm font-medium text-white">{startPoint.name}</p>
+                      <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-400">Choose starting point</p>
+                  )}
+                </div>
+                {startPoint && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removePoint(startPoint.id);
+                    }}
+                    className="p-1 hover:bg-slate-600 rounded"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Waypoints */}
@@ -603,117 +612,250 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
               {/* Connector line */}
               <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
               
-              <button
-                onClick={() => {
-                  if (pickerMode === 'waypoint' && pickerIndex === index + 1) {
-                    setPickerMode(null);
-                    setPickerIndex(-1);
-                  } else {
+              {pickerMode === 'waypoint' && pickerIndex === index + 1 ? (
+                // Edit mode - show input
+                <div className="w-full p-3 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          searchLocation(e.target.value);
+                        }}
+                        placeholder={`Search stop ${index + 1}...`}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        setPickerMode(null);
+                        setPickerIndex(-1);
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                      className="p-1 hover:bg-slate-600 rounded"
+                    >
+                      <X className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                  {/* Search results */}
+                  {searchResults.length > 0 && (
+                    <div className="bg-slate-700 border border-slate-600 rounded-lg max-h-48 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.place_id}
+                          onClick={() => selectSearchResult(result)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-600 border-b border-slate-600 last:border-0"
+                        >
+                          <p className="text-sm text-white truncate">{result.display_name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Display mode - show button
+                <button
+                  onClick={() => {
                     setPickerMode('waypoint');
                     setPickerIndex(index + 1);
-                  }
-                }}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                  pickerMode === 'waypoint' && pickerIndex === index + 1
-                    ? 'border-dash-blue bg-dash-blue/10'
-                    : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
-                }`}
-              >
-                <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
-                  {index + 1}
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-white">{waypoint.name}</p>
-                  <p className="text-xs text-slate-400">{waypoint.lat.toFixed(4)}, {waypoint.lng.toFixed(4)}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      movePoint(waypoint.id, 'up');
-                    }}
-                    disabled={index === 0}
-                    className="p-1 hover:bg-slate-600 rounded disabled:opacity-30"
-                  >
-                    <ArrowUp className="w-3 h-3 text-slate-400" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      movePoint(waypoint.id, 'down');
-                    }}
-                    disabled={index === waypoints.length - 1}
-                    className="p-1 hover:bg-slate-600 rounded disabled:opacity-30"
-                  >
-                    <ArrowDown className="w-3 h-3 text-slate-400" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removePoint(waypoint.id);
-                    }}
-                    className="p-1 hover:bg-slate-600 rounded"
-                  >
-                    <X className="w-4 h-4 text-slate-400" />
-                  </button>
-                </div>
-              </button>
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all"
+                >
+                  <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-white">{waypoint.name}</p>
+                    <p className="text-xs text-slate-400">{waypoint.lat.toFixed(4)}, {waypoint.lng.toFixed(4)}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        movePoint(waypoint.id, 'up');
+                      }}
+                      disabled={index === 0}
+                      className="p-1 hover:bg-slate-600 rounded disabled:opacity-30"
+                    >
+                      <ArrowUp className="w-3 h-3 text-slate-400" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        movePoint(waypoint.id, 'down');
+                      }}
+                      disabled={index === waypoints.length - 1}
+                      className="p-1 hover:bg-slate-600 rounded disabled:opacity-30"
+                    >
+                      <ArrowDown className="w-3 h-3 text-slate-400" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePoint(waypoint.id);
+                      }}
+                      className="p-1 hover:bg-slate-600 rounded"
+                    >
+                      <X className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                </button>
+              )}
             </div>
           ))}
 
           {/* End Point */}
           <div className="relative">
             {waypoints.length > 0 && <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />}
-            <button
-              onClick={() => {
-                if (pickerMode === 'end') {
-                  setPickerMode(null);
-                } else {
-                  setPickerMode('end');
-                }
-              }}
-              className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                pickerMode === 'end'
-                  ? 'border-dash-blue bg-dash-blue/10'
-                  : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
-              }`}
-            >
-              <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
-                B
-              </div>
-              <div className="flex-1 text-left">
-                {endPoint ? (
-                  <>
-                    <p className="text-sm font-medium text-white">{endPoint.name}</p>
-                    <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-slate-400">Choose destination</p>
+            {pickerMode === 'end' ? (
+              // Edit mode - show input
+              <div className="w-full p-4 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                    B
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        searchLocation(e.target.value);
+                      }}
+                      placeholder="Search destination..."
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPickerMode(null);
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                    className="p-1 hover:bg-slate-600 rounded"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
+                {/* Search results */}
+                {searchResults.length > 0 && (
+                  <div className="bg-slate-700 border border-slate-600 rounded-lg max-h-48 overflow-y-auto">
+                    {searchResults.map((result) => (
+                      <button
+                        key={result.place_id}
+                        onClick={() => selectSearchResult(result)}
+                        className="w-full px-3 py-2 text-left hover:bg-slate-600 border-b border-slate-600 last:border-0"
+                      >
+                        <p className="text-sm text-white truncate">{result.display_name}</p>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-              {endPoint && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removePoint(endPoint.id);
-                  }}
-                  className="p-1 hover:bg-slate-600 rounded"
-                >
-                  <X className="w-4 h-4 text-slate-400" />
-                </button>
-              )}
-            </button>
+            ) : (
+              // Display mode - show button
+              <button
+                onClick={() => setPickerMode('end')}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all"
+              >
+                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                  B
+                </div>
+                <div className="flex-1 text-left">
+                  {endPoint ? (
+                    <>
+                      <p className="text-sm font-medium text-white">{endPoint.name}</p>
+                      <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-400">Choose destination</p>
+                  )}
+                </div>
+                {endPoint && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removePoint(endPoint.id);
+                    }}
+                    className="p-1 hover:bg-slate-600 rounded"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                )}
+              </button>
+            )}
           </div>
 
-          {/* Add Stop Button */}
+          {/* Add Stop Button / New Waypoint Input */}
           {startPoint && endPoint && (
-            <button
-              onClick={addStop}
-              className="w-full flex items-center gap-2 p-3 border-2 border-dashed border-slate-600 text-slate-400 rounded-xl hover:border-dash-blue hover:text-dash-blue transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="text-sm">Add stop</span>
-            </button>
+            pickerMode === 'waypoint' && pickerIndex > waypoints.length ? (
+              // New stop input mode
+              <div className="relative pl-4">
+                <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
+                <div className="w-full p-3 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
+                      {waypoints.length + 1}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          searchLocation(e.target.value);
+                        }}
+                        placeholder={`Search stop ${waypoints.length + 1}...`}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        setPickerMode(null);
+                        setPickerIndex(-1);
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                      className="p-1 hover:bg-slate-600 rounded"
+                    >
+                      <X className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                  {/* Search results */}
+                  {searchResults.length > 0 && (
+                    <div className="bg-slate-700 border border-slate-600 rounded-lg max-h-48 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.place_id}
+                          onClick={() => selectSearchResult(result)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-600 border-b border-slate-600 last:border-0"
+                        >
+                          <p className="text-sm text-white truncate">{result.display_name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Add stop button
+              <button
+                onClick={addStop}
+                className="w-full flex items-center gap-2 p-3 border-2 border-dashed border-slate-600 text-slate-400 rounded-xl hover:border-dash-blue hover:text-dash-blue transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="text-sm">Add stop</span>
+              </button>
+            )
           )}
 
           {/* Click on map hint */}
