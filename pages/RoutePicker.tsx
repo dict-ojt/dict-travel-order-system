@@ -652,26 +652,39 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
               </div>
             ) : (
               // Display mode - show card
-              <div className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all">
-                <button
-                  onClick={() => !lockStartPoint && setPickerMode('start')}
-                  disabled={lockStartPoint}
-                  className="flex items-center gap-3 flex-1 text-left disabled:cursor-default"
-                >
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
-                    A
+              <div className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 bg-slate-700/50 transition-all ${lockStartPoint ? 'border-slate-600' : 'border-slate-600 hover:border-slate-500'}`}>
+                {lockStartPoint ? (
+                  // Locked - just display, no click
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                      A
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{startPoint.name}</p>
+                      <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    {startPoint ? (
-                      <>
-                        <p className="text-sm font-medium text-white">{startPoint.name}</p>
-                        <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
-                      </>
-                    ) : (
-                      <p className="text-sm text-slate-400">Choose starting point</p>
-                    )}
-                  </div>
-                </button>
+                ) : (
+                  // Not locked - clickable
+                  <button
+                    onClick={() => setPickerMode('start')}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                      A
+                    </div>
+                    <div className="flex-1">
+                      {startPoint ? (
+                        <>
+                          <p className="text-sm font-medium text-white">{startPoint.name}</p>
+                          <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-slate-400">Choose starting point</p>
+                      )}
+                    </div>
+                  </button>
+                )}
                 {startPoint && !lockStartPoint && (
                   <button
                     onClick={() => removePoint(startPoint.id)}
@@ -680,6 +693,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
                 )}
+                {lockStartPoint && <div className="w-6" />}
               </div>
             )}
           </div>
@@ -897,26 +911,39 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
               </div>
             ) : (
               // Display mode - show card
-              <div className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all">
-                <button
-                  onClick={() => !lockEndPoint && setPickerMode('end')}
-                  disabled={lockEndPoint}
-                  className="flex items-center gap-3 flex-1 text-left disabled:cursor-default"
-                >
-                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
-                    B
+              <div className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 bg-slate-700/50 transition-all ${lockEndPoint ? 'border-slate-600' : 'border-slate-600 hover:border-slate-500'}`}>
+                {lockEndPoint ? (
+                  // Locked - just display, no click
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                      B
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{endPoint.name}</p>
+                      <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    {endPoint ? (
-                      <>
-                        <p className="text-sm font-medium text-white">{endPoint.name}</p>
-                        <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
-                      </>
-                    ) : (
-                      <p className="text-sm text-slate-400">Choose destination</p>
-                    )}
-                  </div>
-                </button>
+                ) : (
+                  // Not locked - clickable
+                  <button
+                    onClick={() => setPickerMode('end')}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                      B
+                    </div>
+                    <div className="flex-1">
+                      {endPoint ? (
+                        <>
+                          <p className="text-sm font-medium text-white">{endPoint.name}</p>
+                          <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-slate-400">Choose destination</p>
+                      )}
+                    </div>
+                  </button>
+                )}
                 {endPoint && !lockEndPoint && (
                   <button
                     onClick={() => removePoint(endPoint.id)}
@@ -925,6 +952,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
                 )}
+                {lockEndPoint && <div className="w-6" />}
               </div>
             )}
           </div>
