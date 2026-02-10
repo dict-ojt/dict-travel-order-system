@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight } from 'lucide-react';
-import { Page } from '../types';
+import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight, MapPinned } from 'lucide-react';
+import { Page, RouteLeg } from '../types';
 import { travelSources, employees, currentUser, TravelOrder } from '../data/database';
 
 interface CreateTravelOrderProps {
   onNavigate: (page: Page) => void;
+  initialRouteLeg?: RouteLeg | null;
+  onClearRouteLeg?: () => void;
 }
 
 interface TravelLeg {
@@ -15,6 +17,12 @@ interface TravelLeg {
   endDate: string;
   distanceKm: number;
   isReturn: boolean;
+  fromLocationName?: string;
+  toLocationName?: string;
+  fromLat?: number;
+  fromLng?: number;
+  toLat?: number;
+  toLng?: number;
 }
 
 interface Traveler {
@@ -22,7 +30,7 @@ interface Traveler {
   employeeId: string;
 }
 
-const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => {
+const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initialRouteLeg, onClearRouteLeg }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -30,6 +38,31 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
   const [dateErrors, setDateErrors] = useState<Record<string, string>>({});
   const [baseOrigin, setBaseOrigin] = useState('');
   const [legs, setLegs] = useState<TravelLeg[]>([]);
+
+  // Handle initial route leg from RoutePicker
+  useEffect(() => {
+    if (initialRouteLeg) {
+      const newLeg: TravelLeg = {
+        id: Date.now().toString(),
+        fromLocationId: '',
+        toLocationId: '',
+        startDate: initialRouteLeg.startDate || '',
+        endDate: initialRouteLeg.endDate || '',
+        distanceKm: Math.round(initialRouteLeg.distanceKm),
+        isReturn: false,
+        fromLocationName: initialRouteLeg.fromLocation.name,
+        toLocationName: initialRouteLeg.toLocation.name,
+        fromLat: initialRouteLeg.fromLocation.lat,
+        fromLng: initialRouteLeg.fromLocation.lng,
+        toLat: initialRouteLeg.toLocation.lat,
+        toLng: initialRouteLeg.toLocation.lng,
+      };
+      setLegs(prev => [...prev, newLeg]);
+      if (onClearRouteLeg) {
+        onClearRouteLeg();
+      }
+    }
+  }, [initialRouteLeg, onClearRouteLeg]);
   
   const [travelers, setTravelers] = useState<Traveler[]>([{ id: '1', employeeId: currentUser.id }]);
   const [fundSource, setFundSource] = useState('');
@@ -260,18 +293,26 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center gap-2 text-sm">
                             <span className="text-slate-500">From:</span>
-                            <span className="font-medium">{getLocationName(leg.fromLocationId)}</span>
+                            {leg.fromLocationName ? (
+                              <span className="font-medium text-dash-blue">{leg.fromLocationName}</span>
+                            ) : (
+                              <span className="font-medium">{getLocationName(leg.fromLocationId)}</span>
+                            )}
                             <ArrowRight className="w-4 h-4 text-slate-400" />
-                            <select
-                              value={leg.toLocationId}
-                              onChange={(e) => updateLeg(leg.id, { toLocationId: e.target.value })}
-                              className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
-                            >
-                              <option value="">Select destination</option>
-                              {travelSources.filter(s => s.id !== leg.fromLocationId).map(source => (
-                                <option key={source.id} value={source.id}>{source.name}</option>
-                              ))}
-                            </select>
+                            {leg.toLocationName ? (
+                              <span className="font-medium text-dash-blue">{leg.toLocationName}</span>
+                            ) : (
+                              <select
+                                value={leg.toLocationId}
+                                onChange={(e) => updateLeg(leg.id, { toLocationId: e.target.value })}
+                                className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
+                              >
+                                <option value="">Select destination</option>
+                                {travelSources.filter(s => s.id !== leg.fromLocationId).map(source => (
+                                  <option key={source.id} value={source.id}>{source.name}</option>
+                                ))}
+                              </select>
+                            )}
                           </div>
                           
                           <div className="flex flex-wrap items-center gap-4">
@@ -279,6 +320,12 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
                               <Route className="w-4 h-4" />
                               <span>{leg.distanceKm > 0 ? `${leg.distanceKm} km` : 'Auto-calculated'}</span>
                             </div>
+                            {leg.fromLocationName && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 bg-dash-blue/10 text-dash-blue text-xs rounded-full">
+                                <MapPinned className="w-3 h-3" />
+                                Map Route
+                              </span>
+                            )}
                             <div className="flex items-start gap-2">
                               <div className="flex flex-col">
                                 <input
@@ -339,6 +386,14 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
               >
                 <Plus className="w-4 h-4" />
                 Add Travel Leg
+              </button>
+              <button
+                onClick={() => onNavigate(Page.ROUTE_PICKER)}
+                disabled={legs.some(l => l.isReturn)}
+                className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-dash-blue/50 dark:border-dash-blue/30 text-dash-blue rounded-lg hover:border-dash-blue hover:bg-dash-blue/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              >
+                <MapPinned className="w-4 h-4" />
+                Pick Route on Map
               </button>
               {legs.length > 0 && !legs.some(l => l.isReturn) && (
                 <button

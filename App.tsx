@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Page } from './types';
+import { Page, RouteLeg } from './types';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
@@ -10,6 +10,7 @@ import CalendarPage from './pages/CalendarPage';
 import Divisions from './pages/Divisions';
 import TravelSources from './pages/TravelSources';
 import CreateTravelOrder from './pages/CreateTravelOrder';
+import RoutePicker from './pages/RoutePicker';
 import Settings from './pages/Settings';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('theme') as any) || 'system';
   });
+  const [selectedRouteLeg, setSelectedRouteLeg] = useState<RouteLeg | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -53,7 +55,19 @@ const App: React.FC = () => {
       case Page.DASHBOARD: return <Dashboard onSignOut={() => setIsLoggedIn(false)} onNavigate={setCurrentPage} />;
       case Page.EMPLOYEES: return <Employees />;
       case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} />;
-      case Page.CREATE_TRAVEL_ORDER: return <CreateTravelOrder onNavigate={setCurrentPage} />;
+      case Page.CREATE_TRAVEL_ORDER: return (
+        <CreateTravelOrder 
+          onNavigate={setCurrentPage} 
+          initialRouteLeg={selectedRouteLeg}
+          onClearRouteLeg={() => setSelectedRouteLeg(null)}
+        />
+      );
+      case Page.ROUTE_PICKER: return (
+        <RoutePicker 
+          onNavigate={setCurrentPage} 
+          onSelectLeg={(leg) => setSelectedRouteLeg(leg)}
+        />
+      );
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
       case Page.APPROVALS: return <Approvals onNavigate={setCurrentPage} />;
       case Page.CALENDAR: return <CalendarPage />;

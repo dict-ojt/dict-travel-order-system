@@ -9,6 +9,7 @@ export enum Page {
   APPROVAL_DETAILS = 'approval_details',
   TRAVEL_ORDERS = 'travel_orders',
   CREATE_TRAVEL_ORDER = 'create_travel_order',
+  ROUTE_PICKER = 'route_picker',
   USERS = 'users',
   CALENDAR = 'calendar'
 }
@@ -36,6 +37,23 @@ export interface TravelOrder {
     label: string;
     completed: boolean;
   }[];
+}
+
+export interface RouteLeg {
+  fromLocation: {
+    name: string;
+    lat: number;
+    lng: number;
+  };
+  toLocation: {
+    name: string;
+    lat: number;
+    lng: number;
+  };
+  distanceKm: number;
+  durationMin: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface Division {
