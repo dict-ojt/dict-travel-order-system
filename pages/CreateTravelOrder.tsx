@@ -3,13 +3,6 @@ import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, P
 import { Page, RouteLeg } from '../types';
 import { travelSources, employees, currentUser, TravelOrder } from '../data/database';
 
-interface CreateTravelOrderProps {
-  onNavigate: (page: Page) => void;
-  initialRouteLeg?: RouteLeg | null;
-  onClearRouteLeg?: () => void;
-  onOpenRoutePicker?: (previousLeg: RouteLeg | null) => void;
-}
-
 interface TravelLeg {
   id: string;
   fromLocationId: string;
@@ -26,18 +19,26 @@ interface TravelLeg {
   toLng?: number;
 }
 
+interface CreateTravelOrderProps {
+  onNavigate: (page: Page) => void;
+  initialRouteLeg?: RouteLeg | null;
+  onClearRouteLeg?: () => void;
+  onOpenRoutePicker?: (previousLeg: RouteLeg | null) => void;
+  legs: TravelLeg[];
+  setLegs: React.Dispatch<React.SetStateAction<TravelLeg[]>>;
+}
+
 interface Traveler {
   id: string;
   employeeId: string;
 }
 
-const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initialRouteLeg, onClearRouteLeg, onOpenRoutePicker }) => {
+const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initialRouteLeg, onClearRouteLeg, onOpenRoutePicker, legs, setLegs }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dateErrors, setDateErrors] = useState<Record<string, string>>({});
-  const [legs, setLegs] = useState<TravelLeg[]>([]);
   const hasAddedLeg = useRef(false);
 
   // Handle initial route leg from RoutePicker
@@ -65,7 +66,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
     if (!initialRouteLeg) {
       hasAddedLeg.current = false;
     }
-  }, [initialRouteLeg, onClearRouteLeg]);
+  }, [initialRouteLeg, onClearRouteLeg, setLegs]);
   
   const [travelers, setTravelers] = useState<Traveler[]>([{ id: '1', employeeId: currentUser.id }]);
   const [fundSource, setFundSource] = useState('');

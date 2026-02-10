@@ -23,6 +23,21 @@ const App: React.FC = () => {
   });
   const [selectedRouteLeg, setSelectedRouteLeg] = useState<RouteLeg | null>(null);
   const [previousLegForNext, setPreviousLegForNext] = useState<RouteLeg | null>(null);
+  const [travelLegs, setTravelLegs] = useState<Array<{
+    id: string;
+    fromLocationId: string;
+    toLocationId: string;
+    startDate: string;
+    endDate: string;
+    distanceKm: number;
+    isReturn: boolean;
+    fromLocationName?: string;
+    toLocationName?: string;
+    fromLat?: number;
+    fromLng?: number;
+    toLat?: number;
+    toLng?: number;
+  }>>([]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -65,6 +80,8 @@ const App: React.FC = () => {
             setPreviousLegForNext(prevLeg);
             setCurrentPage(Page.ROUTE_PICKER);
           }}
+          legs={travelLegs}
+          setLegs={setTravelLegs}
         />
       );
       case Page.ROUTE_PICKER: return (
