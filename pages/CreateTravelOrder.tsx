@@ -386,7 +386,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
                   const prevRouteLeg = prevLeg ? {
                     fromLocation: { name: '', lat: 0, lng: 0 },
                     toLocation: {
-                      name: prevLeg.toLocationName || '',
+                      name: prevLeg.toLocationName || getLocationName(prevLeg.toLocationId),
                       lat: prevLeg.toLat || 0,
                       lng: prevLeg.toLng || 0
                     },
@@ -409,7 +409,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
                     const prevRouteLeg = prevLeg ? {
                       fromLocation: { name: '', lat: 0, lng: 0 },
                       toLocation: {
-                        name: prevLeg.toLocationName || '',
+                        name: prevLeg.toLocationName || getLocationName(prevLeg.toLocationId),
                         lat: prevLeg.toLat || 0,
                         lng: prevLeg.toLng || 0
                       },
@@ -417,7 +417,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
                       durationMin: 0
                     } : null;
                     const returnEndPoint = firstLeg ? {
-                      name: firstLeg.fromLocationName || '',
+                      name: firstLeg.fromLocationName || getLocationName(firstLeg.fromLocationId),
                       lat: firstLeg.fromLat || 0,
                       lng: firstLeg.fromLng || 0
                     } : null;

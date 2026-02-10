@@ -52,10 +52,17 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   initialStartPoint, 
   onClearInitialStartPoint,
   initialEndPoint,
-  lockStartPoint = false,
-  lockEndPoint = false,
+  lockStartPoint: _lockStartPoint = false,
+  lockEndPoint: _lockEndPoint = false,
   isReturnLeg = false
 }) => {
+  const hasValidCoords = (p?: { lat: number; lng: number } | null) => {
+    return p && (Math.abs(p.lat) > 0.0001 || Math.abs(p.lng) > 0.0001);
+  };
+
+  const lockStartPoint = (_lockStartPoint || isReturnLeg) && !!initialStartPoint?.name && hasValidCoords(initialStartPoint);
+  const lockEndPoint = (_lockEndPoint || isReturnLeg) && !!initialEndPoint?.name && hasValidCoords(initialEndPoint);
+
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const routeLineRef = useRef<any>(null);
@@ -154,7 +161,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
       if (initialStartPoint) {
         mapInstanceRef.current?.panTo([initialStartPoint.lat, initialStartPoint.lng]);
       }
-      onClearInitialStartPoint?.();
+      // Keep initial points in parent state to maintain locked status
+      // onClearInitialStartPoint?.(); 
     }, 100);
   }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng, initialEndPoint?.name, initialEndPoint?.lat, initialEndPoint?.lng]);
 
@@ -383,9 +391,10 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         }
         existingMarker.setIcon(getMarkerIcon(point.type, index, currentPoints.length));
       } else {
+        const isLocked = (point.type === 'start' && lockStartPoint) || (point.type === 'end' && lockEndPoint);
         const marker = L.marker([point.lat, point.lng], { 
           icon: getMarkerIcon(point.type, index, currentPoints.length),
-          draggable: true 
+          draggable: !isLocked 
         }).addTo(mapInstanceRef.current);
         
         // Add popup with location name
@@ -660,8 +669,11 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                       A
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{startPoint.name}</p>
-                      <p className="text-xs text-slate-400">{startPoint.lat.toFixed(4)}, {startPoint.lng.toFixed(4)}</p>
+                      <p className="text-sm font-medium text-white">{startPoint?.name || initialStartPoint?.name}</p>
+                      <p className="text-xs text-slate-400">
+                        {startPoint ? startPoint.lat.toFixed(4) : (initialStartPoint?.lat || 0).toFixed(4)},{' '}
+                        {startPoint ? startPoint.lng.toFixed(4) : (initialStartPoint?.lng || 0).toFixed(4)}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -919,8 +931,11 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
                       B
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{endPoint.name}</p>
-                      <p className="text-xs text-slate-400">{endPoint.lat.toFixed(4)}, {endPoint.lng.toFixed(4)}</p>
+                      <p className="text-sm font-medium text-white">{endPoint?.name || initialEndPoint?.name}</p>
+                      <p className="text-xs text-slate-400">
+                        {endPoint ? endPoint.lat.toFixed(4) : (initialEndPoint?.lat || 0).toFixed(4)},{' '}
+                        {endPoint ? endPoint.lng.toFixed(4) : (initialEndPoint?.lng || 0).toFixed(4)}
+                      </p>
                     </div>
                   </div>
                 ) : (
