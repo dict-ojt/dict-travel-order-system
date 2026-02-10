@@ -55,6 +55,11 @@ export interface RouteLeg {
   startDate?: string;
   endDate?: string;
   isReturn?: boolean;
+  waypoints?: Array<{
+    name: string;
+    lat: number;
+    lng: number;
+  }>;
 }
 
 export interface Division {

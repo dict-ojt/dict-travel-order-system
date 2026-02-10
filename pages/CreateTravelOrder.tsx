@@ -17,15 +17,32 @@ interface TravelLeg {
   fromLng?: number;
   toLat?: number;
   toLng?: number;
+  waypoints?: Array<{
+    name: string;
+    lat: number;
+    lng: number;
+  }>;
 }
 
 interface CreateTravelOrderProps {
   onNavigate: (page: Page) => void;
   initialRouteLeg?: RouteLeg | null;
   onClearRouteLeg?: () => void;
-  onOpenRoutePicker?: (previousLeg: RouteLeg | null, isReturn?: boolean, returnEndPoint?: { name: string; lat: number; lng: number } | null) => void;
+  onOpenRoutePicker?: (
+    previousLeg: RouteLeg | null, 
+    isReturn?: boolean, 
+    returnEndPoint?: { name: string; lat: number; lng: number } | null,
+    editingLeg?: { 
+      leg: TravelLeg, 
+      startPoint: { name: string; lat: number; lng: number },
+      endPoint: { name: string; lat: number; lng: number },
+      waypoints: Array<{ name: string; lat: number; lng: number }>
+    } | null
+  ) => void;
   legs: TravelLeg[];
   setLegs: React.Dispatch<React.SetStateAction<TravelLeg[]>>;
+  editingLegId?: string | null;
+  onClearEditingState?: () => void;
 }
 
 interface Traveler {
@@ -33,7 +50,16 @@ interface Traveler {
   employeeId: string;
 }
 
-const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initialRouteLeg, onClearRouteLeg, onOpenRoutePicker, legs, setLegs }) => {
+const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ 
+  onNavigate, 
+  initialRouteLeg, 
+  onClearRouteLeg, 
+  onOpenRoutePicker, 
+  legs, 
+  setLegs,
+  editingLegId: propEditingLegId,
+  onClearEditingState
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -41,32 +67,68 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
   const [dateErrors, setDateErrors] = useState<Record<string, string>>({});
   const hasAddedLeg = useRef(false);
 
+  const [localEditingLegId, setLocalEditingLegId] = useState<string | null>(null);
+
+  // Sync prop editing leg id to local state if needed, or use the prop directly if we were to lift all state up
+  // For now, let's respect the prop if passed, otherwise fall back to internal logic?
+  // Actually, the issue is that `editingLegId` state was reset when component re-mounted or logic was flawed.
+  // We need to use the `editingLegId` passed from App.tsx because RoutePicker navigation unmounts this component.
+
   // Handle initial route leg from RoutePicker
   useEffect(() => {
     if (initialRouteLeg && !hasAddedLeg.current) {
       hasAddedLeg.current = true;
-      const newLeg: TravelLeg = {
-        id: Date.now().toString(),
-        fromLocationId: '',
-        toLocationId: '',
-        startDate: initialRouteLeg.startDate || '',
-        endDate: initialRouteLeg.endDate || '',
-        distanceKm: Math.round(initialRouteLeg.distanceKm),
-        isReturn: initialRouteLeg.isReturn || false,
-        fromLocationName: initialRouteLeg.fromLocation.name,
-        toLocationName: initialRouteLeg.toLocation.name,
-        fromLat: initialRouteLeg.fromLocation.lat,
-        fromLng: initialRouteLeg.fromLocation.lng,
-        toLat: initialRouteLeg.toLocation.lat,
-        toLng: initialRouteLeg.toLocation.lng,
-      };
-      setLegs(prev => [...prev, newLeg]);
+      
+      const targetId = propEditingLegId || localEditingLegId;
+
+      if (targetId) {
+        // Update existing leg
+        setLegs(prev => prev.map(leg => {
+          if (leg.id === targetId) {
+            return {
+              ...leg,
+              startDate: initialRouteLeg.startDate || leg.startDate,
+              endDate: initialRouteLeg.endDate || leg.endDate,
+              distanceKm: Math.round(initialRouteLeg.distanceKm),
+              fromLocationName: initialRouteLeg.fromLocation.name,
+              toLocationName: initialRouteLeg.toLocation.name,
+              fromLat: initialRouteLeg.fromLocation.lat,
+              fromLng: initialRouteLeg.fromLocation.lng,
+              toLat: initialRouteLeg.toLocation.lat,
+              toLng: initialRouteLeg.toLocation.lng,
+              waypoints: initialRouteLeg.waypoints
+            };
+          }
+          return leg;
+        }));
+        setLocalEditingLegId(null);
+        onClearEditingState?.();
+      } else {
+        // Add new leg
+        const newLeg: TravelLeg = {
+          id: Date.now().toString(),
+          fromLocationId: '',
+          toLocationId: '',
+          startDate: initialRouteLeg.startDate || '',
+          endDate: initialRouteLeg.endDate || '',
+          distanceKm: Math.round(initialRouteLeg.distanceKm),
+          isReturn: initialRouteLeg.isReturn || false,
+          fromLocationName: initialRouteLeg.fromLocation.name,
+          toLocationName: initialRouteLeg.toLocation.name,
+          fromLat: initialRouteLeg.fromLocation.lat,
+          fromLng: initialRouteLeg.fromLocation.lng,
+          toLat: initialRouteLeg.toLocation.lat,
+          toLng: initialRouteLeg.toLocation.lng,
+          waypoints: initialRouteLeg.waypoints
+        };
+        setLegs(prev => [...prev, newLeg]);
+      }
       onClearRouteLeg?.();
     }
     if (!initialRouteLeg) {
       hasAddedLeg.current = false;
     }
-  }, [initialRouteLeg, onClearRouteLeg, setLegs]);
+  }, [initialRouteLeg, onClearRouteLeg, setLegs, propEditingLegId, localEditingLegId, onClearEditingState]);
   
   const [travelers, setTravelers] = useState<Traveler[]>([{ id: '1', employeeId: currentUser.id }]);
   const [fundSource, setFundSource] = useState('');
@@ -75,6 +137,49 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
   const [approvalSteps, setApprovalSteps] = useState('');
   const [purpose, setPurpose] = useState('');
   const [remarks, setRemarks] = useState('');
+
+  const handleEditLeg = (leg: TravelLeg) => {
+    setLocalEditingLegId(leg.id);
+    
+    // Prepare data for RoutePicker
+    const startPoint = { 
+      name: leg.fromLocationName || getLocationName(leg.fromLocationId),
+      lat: leg.fromLat || 0,
+      lng: leg.fromLng || 0
+    };
+    
+    const endPoint = {
+      name: leg.toLocationName || getLocationName(leg.toLocationId),
+      lat: leg.toLat || 0,
+      lng: leg.toLng || 0
+    };
+    
+    const waypoints = leg.waypoints || [];
+    
+    // Construct RouteLeg object for compatibility
+    const routeLeg: RouteLeg = {
+      fromLocation: startPoint,
+      toLocation: endPoint,
+      distanceKm: leg.distanceKm,
+      durationMin: 0,
+      startDate: leg.startDate,
+      endDate: leg.endDate,
+      isReturn: leg.isReturn,
+      waypoints: waypoints
+    };
+
+    onOpenRoutePicker?.(
+      null, 
+      leg.isReturn, 
+      null, 
+      { 
+        leg, 
+        startPoint, 
+        endPoint,
+        waypoints
+      }
+    );
+  };
 
   const calculateDistance = (fromId: string, toId: string): number => {
     const distanceMap: Record<string, Record<string, number>> = {
@@ -292,7 +397,10 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
                       {index > 0 && (
                         <div className="absolute -top-4 left-6 w-0.5 h-4 bg-slate-300 dark:bg-slate-600" />
                       )}
-                      <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 rounded-lg">
+                      <div 
+                        className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 rounded-lg cursor-pointer hover:border-dash-blue dark:hover:border-dash-blue transition-colors group"
+                        onClick={() => handleEditLeg(leg)}
+                      >
                         <div className={`w-8 h-8 ${getLegColor(index)} rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0`}>
                           {index + 1}
                         </div>
@@ -310,7 +418,11 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
                             ) : (
                               <select
                                 value={leg.toLocationId}
-                                onChange={(e) => updateLeg(leg.id, { toLocationId: e.target.value })}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  updateLeg(leg.id, { toLocationId: e.target.value });
+                                }}
+                                onClick={(e) => e.stopPropagation()}
                                 className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
                               >
                                 <option value="">Select destination</option>
@@ -321,13 +433,25 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
                             )}
                           </div>
                           
+                          {/* Waypoints display */}
+                          {leg.waypoints && leg.waypoints.length > 0 && (
+                            <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-600 ml-1.5 space-y-1">
+                              {leg.waypoints.map((wp, i) => (
+                                <div key={i} className="flex items-center gap-2 text-xs text-slate-500">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+                                  <span>Stop {i + 1}: {wp.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
                           <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                               <Route className="w-4 h-4" />
                               <span>{leg.distanceKm > 0 ? `${leg.distanceKm} km` : 'Auto-calculated'}</span>
                             </div>
 
-                            <div className="flex items-start gap-2">
+                            <div className="flex items-start gap-2" onClick={(e) => e.stopPropagation()}>
                               <div className="flex flex-col">
                                 <input
                                   type="date"
@@ -363,10 +487,16 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
                                 🏠 Return
                               </span>
                             )}
+                            <span className="text-xs text-dash-blue opacity-0 group-hover:opacity-100 transition-opacity">
+                              Click to edit route
+                            </span>
                           </div>
                         </div>
                         <button
-                          onClick={() => removeLeg(leg.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeLeg(leg.id);
+                          }}
                           className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                         >
                           <X className="w-4 h-4" />

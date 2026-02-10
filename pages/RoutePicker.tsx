@@ -8,6 +8,7 @@ interface RoutePickerProps {
   initialStartPoint?: { name: string; lat: number; lng: number } | null;
   onClearInitialStartPoint?: () => void;
   initialEndPoint?: { name: string; lat: number; lng: number } | null;
+  initialWaypoints?: Array<{ name: string; lat: number; lng: number }> | null;
   lockStartPoint?: boolean;
   lockEndPoint?: boolean;
   isReturnLeg?: boolean;
@@ -52,6 +53,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   initialStartPoint, 
   onClearInitialStartPoint,
   initialEndPoint,
+  initialWaypoints,
   lockStartPoint: _lockStartPoint = false,
   lockEndPoint: _lockEndPoint = false,
   isReturnLeg = false
@@ -122,12 +124,14 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     
     const hasStart = points.some(p => p.type === 'start');
     const hasEnd = points.some(p => p.type === 'end');
+    const hasWaypoints = points.some(p => p.type === 'waypoint');
     
     // Only proceed if we have initial points to set and they're not already set
     const shouldSetStart = initialStartPoint?.name && !hasStart;
     const shouldSetEnd = initialEndPoint?.name && !hasEnd;
+    const shouldSetWaypoints = initialWaypoints?.length && !hasWaypoints;
     
-    if (!shouldSetStart && !shouldSetEnd) return;
+    if (!shouldSetStart && !shouldSetEnd && !shouldSetWaypoints) return;
     
     hasSetInitialPoints.current = true;
     
@@ -140,6 +144,18 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         lng: initialStartPoint.lng,
         name: initialStartPoint.name,
         type: 'start'
+      });
+    }
+
+    if (shouldSetWaypoints && initialWaypoints) {
+      initialWaypoints.forEach((wp, index) => {
+        newPoints.push({
+          id: (Date.now() + index + 2).toString(),
+          lat: wp.lat,
+          lng: wp.lng,
+          name: wp.name,
+          type: 'waypoint'
+        });
       });
     }
     
@@ -164,7 +180,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
       // Keep initial points in parent state to maintain locked status
       // onClearInitialStartPoint?.(); 
     }, 100);
-  }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng, initialEndPoint?.name, initialEndPoint?.lat, initialEndPoint?.lng]);
+  }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng, initialEndPoint?.name, initialEndPoint?.lat, initialEndPoint?.lng, initialWaypoints]);
 
   const handleMapClickRef = useRef(async (lat: number, lng: number) => {
     // This will be replaced after initialization
@@ -561,6 +577,11 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         lat: end.lat,
         lng: end.lng
       },
+      waypoints: waypoints.map(wp => ({
+        name: wp.name,
+        lat: wp.lat,
+        lng: wp.lng
+      })),
       distanceKm: Math.round(routeInfo.distance * 10) / 10,
       durationMin: Math.round(routeInfo.duration),
       startDate,

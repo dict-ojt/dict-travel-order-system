@@ -25,6 +25,13 @@ const App: React.FC = () => {
   const [previousLegForNext, setPreviousLegForNext] = useState<RouteLeg | null>(null);
   const [isReturnLeg, setIsReturnLeg] = useState(false);
   const [returnEndPoint, setReturnEndPoint] = useState<{ name: string; lat: number; lng: number } | null>(null);
+  const [editingLegData, setEditingLegData] = useState<{
+    leg: any, 
+    startPoint: { name: string; lat: number; lng: number },
+    endPoint: { name: string; lat: number; lng: number },
+    waypoints: Array<{ name: string; lat: number; lng: number }>
+  } | null>(null);
+  const [editingLegId, setEditingLegId] = useState<string | null>(null);
   const [travelLegs, setTravelLegs] = useState<Array<{
     id: string;
     fromLocationId: string;
@@ -39,6 +46,7 @@ const App: React.FC = () => {
     fromLng?: number;
     toLat?: number;
     toLng?: number;
+    waypoints?: Array<{ name: string; lat: number; lng: number }>;
   }>>([]);
 
   useEffect(() => {
@@ -78,29 +86,40 @@ const App: React.FC = () => {
           onNavigate={setCurrentPage} 
           initialRouteLeg={selectedRouteLeg}
           onClearRouteLeg={() => setSelectedRouteLeg(null)}
-          onOpenRoutePicker={(prevLeg, isReturn, returnEndPoint) => {
+          onOpenRoutePicker={(prevLeg, isReturn, returnEndPoint, editingLeg) => {
             setPreviousLegForNext(prevLeg);
             setIsReturnLeg(isReturn || false);
             setReturnEndPoint(returnEndPoint || null);
+            setEditingLegData(editingLeg || null);
+            if (editingLeg) {
+              setEditingLegId(editingLeg.leg.id);
+            }
             setCurrentPage(Page.ROUTE_PICKER);
           }}
           legs={travelLegs}
           setLegs={setTravelLegs}
+          editingLegId={editingLegId}
+          onClearEditingState={() => {
+            setEditingLegId(null);
+            setEditingLegData(null);
+          }}
         />
       );
       case Page.ROUTE_PICKER: return (
         <RoutePicker 
           onNavigate={setCurrentPage} 
           onSelectLeg={(leg) => setSelectedRouteLeg(leg)}
-          initialStartPoint={previousLegForNext?.toLocation || null}
+          initialStartPoint={editingLegData ? editingLegData.startPoint : (previousLegForNext?.toLocation || null)}
           onClearInitialStartPoint={() => {
             setPreviousLegForNext(null);
             setIsReturnLeg(false);
             setReturnEndPoint(null);
+            // Don't clear editing data here, let CreateTravelOrder handle it on success
           }}
-          initialEndPoint={returnEndPoint}
-          lockStartPoint={!!previousLegForNext?.toLocation?.name}
-          lockEndPoint={!!returnEndPoint?.name}
+          initialEndPoint={editingLegData ? editingLegData.endPoint : returnEndPoint}
+          initialWaypoints={editingLegData ? editingLegData.waypoints : null}
+          lockStartPoint={!editingLegData && !!previousLegForNext?.toLocation?.name}
+          lockEndPoint={!editingLegData && !!returnEndPoint?.name}
           isReturnLeg={isReturnLeg}
         />
       );
