@@ -98,21 +98,41 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, initi
 
   const addLeg = (isReturn: boolean = false) => {
     const prevLeg = legs[legs.length - 1];
-    const fromId = prevLeg ? prevLeg.toLocationId : '';
-    const toId = '';
+    const firstLeg = legs[0];
     
-    const today = new Date();
-    const startDate = prevLeg ? prevLeg.endDate : today.toISOString().split('T')[0];
-    
-    setLegs([...legs, {
-      id: Date.now().toString(),
-      fromLocationId: fromId,
-      toLocationId: toId,
-      startDate,
-      endDate: '',
-      distanceKm: 0,
-      isReturn
-    }]);
+    if (isReturn && firstLeg) {
+      // Return leg: from = previous leg's to, to = first leg's from
+      setLegs([...legs, {
+        id: Date.now().toString(),
+        fromLocationId: '',
+        toLocationId: '',
+        startDate: prevLeg?.endDate || new Date().toISOString().split('T')[0],
+        endDate: '',
+        distanceKm: 0,
+        isReturn: true,
+        fromLocationName: prevLeg?.toLocationName,
+        fromLat: prevLeg?.toLat,
+        fromLng: prevLeg?.toLng,
+        toLocationName: firstLeg.fromLocationName,
+        toLat: firstLeg.fromLat,
+        toLng: firstLeg.fromLng
+      }]);
+    } else {
+      const fromId = prevLeg ? prevLeg.toLocationId : '';
+      const toId = '';
+      const today = new Date();
+      const startDate = prevLeg ? prevLeg.endDate : today.toISOString().split('T')[0];
+      
+      setLegs([...legs, {
+        id: Date.now().toString(),
+        fromLocationId: fromId,
+        toLocationId: toId,
+        startDate,
+        endDate: '',
+        distanceKm: 0,
+        isReturn
+      }]);
+    }
   };
 
   const updateLeg = (id: string, updates: Partial<TravelLeg>) => {
