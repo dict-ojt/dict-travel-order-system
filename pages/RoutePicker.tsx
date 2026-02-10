@@ -97,7 +97,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     mapInstanceRef.current = map;
 
     // Delay bounds fitting to ensure map container is fully rendered
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      if (!mapInstanceRef.current) return;
       map.invalidateSize();
       // Region 2 bounds (approximate covering Cagayan Valley)
       const region2Bounds = L.latLngBounds([15.5, 120.5], [19.0, 123.0]);
@@ -107,8 +108,11 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     }, 100);
 
     return () => {
-      map.remove();
-      mapInstanceRef.current = null;
+      clearTimeout(timeoutId);
+      if (mapInstanceRef.current) {
+        map.remove();
+        mapInstanceRef.current = null;
+      }
     };
   }, []);
 
@@ -173,7 +177,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     setPoints(newPoints);
     
     // Delay to ensure map is fully initialized
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      if (!mapInstanceRef.current) return;
       updateMarkersAndRoute(newPoints);
       if (initialStartPoint) {
         mapInstanceRef.current?.panTo([initialStartPoint.lat, initialStartPoint.lng]);
@@ -181,6 +186,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
       // Keep initial points in parent state to maintain locked status
       // onClearInitialStartPoint?.(); 
     }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng, initialEndPoint?.name, initialEndPoint?.lat, initialEndPoint?.lng, initialWaypoints]);
 
   const handleMapClickRef = useRef(async (lat: number, lng: number) => {
@@ -461,6 +468,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
       
       const response = await fetch(url);
       const data: OSRMRouteResponse = await response.json();
+
+      if (!mapInstanceRef.current) return;
 
       if (data.routes.length > 0) {
         const route = data.routes[0];
