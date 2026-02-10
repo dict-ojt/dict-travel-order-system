@@ -475,6 +475,16 @@ export const travelSources: TravelSource[] = [
 // ============================================
 // TRAVEL ORDERS
 // ============================================
+export interface TravelLeg {
+    id: string;
+    fromLocationId: string;
+    toLocationId: string;
+    startDate: string;
+    endDate: string;
+    distanceKm: number;
+    isReturn: boolean;
+}
+
 export interface TravelOrder {
     id: string;
     orderNumber: string;
@@ -496,6 +506,10 @@ export interface TravelOrder {
     approvedBy?: string;
     approvedAt?: string;
     remarks?: string;
+    legs?: TravelLeg[];
+    fundSource?: string;
+    expenses?: string[];
+    approvalSteps?: string;
 }
 
 export const travelOrders: TravelOrder[] = [
@@ -506,19 +520,51 @@ export const travelOrders: TravelOrder[] = [
         employeeName: 'Maria L. Cruz',
         employeeAvatar: 'https://i.pravatar.cc/100?u=maria',
         divisionCode: 'MISS',
-        purpose: 'ICT Infrastructure Assessment',
+        purpose: 'ICT Infrastructure Assessment - Visayas Region',
         originId: 'loc-001',
         originName: 'DICT Headquarters',
-        destinationId: 'loc-007',
-        destinationName: 'DICT Tech Hub Cebu',
+        destinationId: 'loc-011',
+        destinationName: 'DICT Tech Hub Iloilo',
         departureDate: '2026-02-15',
-        returnDate: '2026-02-17',
+        returnDate: '2026-02-19',
         vehicle: 'Commercial Air',
-        estimatedKm: 570,
+        estimatedKm: 1210,
         status: 'approved',
         createdAt: '2026-02-10',
         approvedBy: 'Juan D. Santos',
-        approvedAt: '2026-02-11'
+        approvedAt: '2026-02-11',
+        fundSource: 'General Fund',
+        expenses: ['actual', 'perdiem'],
+        approvalSteps: 'Direct Supervisor → HR',
+        legs: [
+            {
+                id: 'leg-001',
+                fromLocationId: 'loc-001',
+                toLocationId: 'loc-007',
+                startDate: '2026-02-15',
+                endDate: '2026-02-16',
+                distanceKm: 570,
+                isReturn: false
+            },
+            {
+                id: 'leg-002',
+                fromLocationId: 'loc-007',
+                toLocationId: 'loc-011',
+                startDate: '2026-02-16',
+                endDate: '2026-02-18',
+                distanceKm: 180,
+                isReturn: false
+            },
+            {
+                id: 'leg-003',
+                fromLocationId: 'loc-011',
+                toLocationId: 'loc-001',
+                startDate: '2026-02-18',
+                endDate: '2026-02-19',
+                distanceKm: 465,
+                isReturn: true
+            }
+        ]
     },
     {
         id: 'to-002',
@@ -546,17 +592,49 @@ export const travelOrders: TravelOrder[] = [
         employeeName: 'Ana R. Reyes',
         employeeAvatar: 'https://i.pravatar.cc/100?u=ana',
         divisionCode: 'ICTD',
-        purpose: 'System Deployment & Training',
+        purpose: 'Multi-Region System Deployment & Training',
         originId: 'loc-001',
         originName: 'DICT Headquarters',
         destinationId: 'loc-008',
         destinationName: 'DICT Tech Hub Davao',
         departureDate: '2026-02-20',
-        returnDate: '2026-02-23',
+        returnDate: '2026-02-27',
         vehicle: 'Commercial Air',
-        estimatedKm: 980,
+        estimatedKm: 1955,
         status: 'pending',
-        createdAt: '2026-02-14'
+        createdAt: '2026-02-14',
+        fundSource: 'Special Projects',
+        expenses: ['actual', 'perdiem'],
+        approvalSteps: 'Director → Finance → HR',
+        legs: [
+            {
+                id: 'leg-001',
+                fromLocationId: 'loc-001',
+                toLocationId: 'loc-007',
+                startDate: '2026-02-20',
+                endDate: '2026-02-22',
+                distanceKm: 570,
+                isReturn: false
+            },
+            {
+                id: 'leg-002',
+                fromLocationId: 'loc-007',
+                toLocationId: 'loc-008',
+                startDate: '2026-02-22',
+                endDate: '2026-02-25',
+                distanceKm: 405,
+                isReturn: false
+            },
+            {
+                id: 'leg-003',
+                fromLocationId: 'loc-008',
+                toLocationId: 'loc-001',
+                startDate: '2026-02-25',
+                endDate: '2026-02-27',
+                distanceKm: 980,
+                isReturn: true
+            }
+        ]
     },
     {
         id: 'to-004',

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Clock, CheckCircle2, XCircle, Timer, LayoutGrid, List, MapPin, Calendar } from 'lucide-react';
+import { Search, Clock, CheckCircle2, XCircle, Timer, LayoutGrid, List, MapPin, Calendar, Route } from 'lucide-react';
 import { Page } from '../types';
-import { approvals, getDashboardStats, Approval } from '../data/database';
+import { approvals, getDashboardStats, Approval, getTravelOrderById } from '../data/database';
 import ApprovalDetails from './ApprovalDetails';
 
 interface ApprovalsProps { onNavigate?: (page: Page) => void; }
@@ -26,6 +26,11 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
     a.requestorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.purpose.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const getLegCount = (approval: Approval) => {
+    const to = getTravelOrderById(approval.travelOrderId);
+    return to?.legs?.length || 1;
+  };
 
   const getStatusColor = (status: Approval['status']) => {
     switch (status) {
@@ -89,7 +94,11 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
                   </div>
                 </div>
                 <div className="text-xs text-slate-500 space-y-0.5">
-                  <p className="flex items-center gap-1.5"><MapPin className="w-3 h-3 flex-shrink-0" />{a.destination}</p>
+                  <p className="flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                    {getLegCount(a) > 1 ? `${getLegCount(a)} stops` : a.destination}
+                    {getLegCount(a) > 1 && <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] rounded-full">Multi-leg</span>}
+                  </p>
                   <p className="flex items-center gap-1.5"><Calendar className="w-3 h-3 flex-shrink-0" />{a.travelDate}</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(a.status)}`}>{a.status}</span>
@@ -113,7 +122,18 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(a.status)}`}>{a.status}</span>
               </div>
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">{a.purpose}</p>
-              <div className="text-xs text-slate-500 space-y-1 mb-4"><p className="flex items-center gap-1"><MapPin className="w-3 h-3" />{a.destination}</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{a.travelDate}</p></div>
+              <div className="text-xs text-slate-500 space-y-1 mb-4">
+                <p className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {getLegCount(a) > 1 ? `${getLegCount(a)} stops` : a.destination}
+                </p>
+                <p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{a.travelDate}</p>
+                {getLegCount(a) > 1 && (
+                  <p className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                    <Route className="w-3 h-3" />Multi-leg journey
+                  </p>
+                )}
+              </div>
               {a.status === 'pending' && <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700"><button className="flex-1 py-2 bg-green-500 text-white text-xs rounded-lg">Approve</button><button className="flex-1 py-2 bg-red-500 text-white text-xs rounded-lg">Reject</button></div>}
             </div>
           ))}
