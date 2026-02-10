@@ -17,6 +17,7 @@ import Header from './components/Header';
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>(Page.DASHBOARD);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('theme') as any) || 'system';
   });
@@ -52,8 +53,18 @@ const App: React.FC = () => {
     switch (currentPage) {
       case Page.DASHBOARD: return <Dashboard onSignOut={() => setIsLoggedIn(false)} onNavigate={setCurrentPage} />;
       case Page.EMPLOYEES: return <Employees />;
-      case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} />;
-      case Page.CREATE_TRAVEL_ORDER: return <CreateTravelOrder onNavigate={setCurrentPage} />;
+      case Page.TRAVEL_ORDERS: return <TravelOrders
+        onNavigate={setCurrentPage}
+        onEditOrder={(id) => {
+          setEditingOrderId(id);
+          setCurrentPage(Page.CREATE_TRAVEL_ORDER);
+        }}
+      />;
+      case Page.CREATE_TRAVEL_ORDER: return <CreateTravelOrder
+        onNavigate={setCurrentPage}
+        editingOrderId={editingOrderId}
+        onClearEdit={() => setEditingOrderId(null)}
+      />;
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
       case Page.APPROVALS: return <Approvals onNavigate={setCurrentPage} />;
       case Page.CALENDAR: return <CalendarPage />;

@@ -47,7 +47,9 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                 // Too short to search remote, just filter local
                 const localMatches = defaultOptions.filter(opt =>
                     opt.name.toLowerCase().includes(query.toLowerCase()) ||
-                    opt.address.toLowerCase().includes(query.toLowerCase())
+                    opt.address.toLowerCase().includes(query.toLowerCase()) ||
+                    opt.code.toLowerCase().includes(query.toLowerCase()) ||
+                    opt.region.toLowerCase().includes(query.toLowerCase())
                 );
                 setResults(localMatches);
                 setIsLoading(false);
@@ -60,7 +62,9 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                 // Local filter
                 const localMatches = defaultOptions.filter(opt =>
                     opt.name.toLowerCase().includes(query.toLowerCase()) ||
-                    opt.address.toLowerCase().includes(query.toLowerCase())
+                    opt.address.toLowerCase().includes(query.toLowerCase()) ||
+                    opt.code.toLowerCase().includes(query.toLowerCase()) ||
+                    opt.region.toLowerCase().includes(query.toLowerCase())
                 );
 
                 // Remote search

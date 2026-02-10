@@ -8,6 +8,8 @@ import { normalizeLocation, NormalizedLocation, RouteOption, getSavedRoutesFromS
 
 interface CreateTravelOrderProps {
   onNavigate: (page: Page) => void;
+  editingOrderId?: string | null;
+  onClearEdit?: () => void;
 }
 
 interface TravelLeg {
@@ -28,7 +30,7 @@ interface Traveler {
   employeeId: string;
 }
 
-const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => {
+const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editingOrderId, onClearEdit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -40,57 +42,58 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
   const [currentRouteLegId, setCurrentRouteLegId] = useState<string | null>(null);
   const [modalLocations, setModalLocations] = useState<{ from: NormalizedLocation, to: NormalizedLocation } | null>(null);
 
-  // Saved Routes State
+  /* State Updates for Saved Routes */
   const [showSavedRoutes, setShowSavedRoutes] = useState(false);
   const [activeLegForSavedRoute, setActiveLegForSavedRoute] = useState<string | null>(null);
   const [savedRoutesList, setSavedRoutesList] = useState<SavedRoute[]>([]);
-  // Use travelOrders[0] for demo edit
-  const demoOrder = travelOrders[0];
 
+  // Effect to populate form when editing
   useEffect(() => {
-    // Populate form with demo data
-    if (demoOrder) {
-      setPurpose(demoOrder.purpose);
-      setVehicle(demoOrder.vehicle);
-      setFundSource(demoOrder.fundSource || '');
-      setExpenses(demoOrder.expenses || []);
-      setApprovalSteps(demoOrder.approvalSteps || '');
-      setRemarks(demoOrder.remarks || '');
+    if (editingOrderId) {
+      const orderToEdit = travelOrders.find(o => o.id === editingOrderId);
+      if (orderToEdit) {
+        setPurpose(orderToEdit.purpose);
+        setVehicle(orderToEdit.vehicle);
+        setFundSource(orderToEdit.fundSource || '');
+        setExpenses(orderToEdit.expenses || []);
+        setApprovalSteps(orderToEdit.approvalSteps || '');
+        setRemarks(orderToEdit.remarks || '');
 
-      // Set Origin
-      const origin = normalizeLocation({ name: demoOrder.originName, display_name: demoOrder.originName, lat: 0, lon: 0 }); // Mock normalization
-      setBaseOrigin(origin);
+        // Set Origin
+        const origin = normalizeLocation({ name: orderToEdit.originName, display_name: orderToEdit.originName, lat: 0, lon: 0 });
+        setBaseOrigin(origin);
 
-      if (demoOrder.legs) {
-        const loadedLegs: TravelLeg[] = demoOrder.legs.map((leg) => {
-          const fromSource = travelSources.find(l => l.id === leg.fromLocationId);
-          const toSource = travelSources.find(l => l.id === leg.toLocationId);
+        if (orderToEdit.legs) {
+          const loadedLegs: TravelLeg[] = orderToEdit.legs.map((leg) => {
+            const fromSource = travelSources.find(l => l.id === leg.fromLocationId);
+            const toSource = travelSources.find(l => l.id === leg.toLocationId);
 
-          const fromLoc = fromSource
-            ? normalizeLocation(fromSource)
-            : normalizeLocation({ lat: 0, lon: 0, display_name: 'Unknown Location' });
+            const fromLoc = fromSource
+              ? normalizeLocation(fromSource)
+              : normalizeLocation({ lat: 0, lon: 0, display_name: 'Unknown Location', name: 'Unknown Location' });
 
-          const toLoc = toSource
-            ? normalizeLocation(toSource)
-            : null;
+            const toLoc = toSource
+              ? normalizeLocation(toSource)
+              : null;
 
-          return {
-            id: leg.id,
-            fromLocation: fromLoc!,
-            toLocation: toLoc,
-            startDate: leg.startDate,
-            endDate: leg.endDate,
-            distanceKm: leg.distanceKm,
-            isReturn: leg.isReturn,
-            stops: [], // Mock data doesn't have stops yet
-            avoid: [],
-            avoidPoint: null
-          };
-        });
-        setLegs(loadedLegs);
+            return {
+              id: leg.id,
+              fromLocation: fromLoc!,
+              toLocation: toLoc,
+              startDate: leg.startDate,
+              endDate: leg.endDate,
+              distanceKm: leg.distanceKm,
+              isReturn: leg.isReturn,
+              stops: [],
+              avoid: [],
+              avoidPoint: null
+            };
+          });
+          setLegs(loadedLegs);
+        }
       }
     }
-  }, []);
+  }, [editingOrderId]);
 
   /* State Updates for Stops */
   const [routeStops, setRouteStops] = useState<Record<string, NormalizedLocation[]>>({});
@@ -318,7 +321,9 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
       setRemarks('');
       setUploadedFiles([]);
       setDateErrors({});
+      onClearEdit?.();
     } else {
+      onClearEdit?.();
       onNavigate(Page.TRAVEL_ORDERS);
     }
   };
@@ -339,11 +344,11 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate }) => 
   return (
     <div className="max-w-5xl mx-auto pb-8">
       <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => onNavigate(Page.TRAVEL_ORDERS)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+        <button onClick={() => { onClearEdit?.(); onNavigate(Page.TRAVEL_ORDERS); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
           <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Create Travel Order</h1>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{editingOrderId ? 'Edit Travel Order' : 'Create Travel Order'}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Sequential Travel Legs</p>
         </div>
       </div>

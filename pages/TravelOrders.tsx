@@ -4,9 +4,12 @@ import { Page } from '../types';
 import { travelOrders, getDashboardStats, TravelOrder } from '../data/database';
 import TravelOrderDetails from './TravelOrderDetails';
 
-interface TravelOrdersProps { onNavigate?: (page: Page) => void; }
+interface TravelOrdersProps {
+  onNavigate?: (page: Page) => void;
+  onEditOrder?: (orderId: string) => void;
+}
 
-const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
+const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onEditOrder }) => {
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'completed'>('all');
@@ -147,6 +150,7 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate }) => {
                                 e.stopPropagation();
                                 setActiveActionId(null);
                                 onNavigate?.(Page.CREATE_TRAVEL_ORDER);
+                                onEditOrder?.(o.id);
                               }}
                               className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
                             >
