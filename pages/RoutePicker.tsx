@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ArrowLeft, MapPin, X, Plus, Trash2, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { Page, RouteLeg } from '../types';
 
@@ -55,6 +55,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // Initialize map only once
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
@@ -69,22 +70,42 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    map.on('click', (e: any) => {
-      if (pickerMode) {
-        handleMapClick(e.latlng.lat, e.latlng.lng);
-      }
-    });
-
     mapInstanceRef.current = map;
 
-    const philippinesBounds = L.latLngBounds([4.5, 116], [21, 127]);
-    if (philippinesBounds.isValid()) {
-      map.fitBounds(philippinesBounds, { padding: [50, 50] });
-    }
+    // Delay bounds fitting to ensure map container is fully rendered
+    setTimeout(() => {
+      map.invalidateSize();
+      const philippinesBounds = L.latLngBounds([4.5, 116], [21, 127]);
+      if (philippinesBounds.isValid()) {
+        map.fitBounds(philippinesBounds, { padding: [50, 50] });
+      }
+    }, 100);
 
     return () => {
       map.remove();
       mapInstanceRef.current = null;
+    };
+  }, []);
+
+  const handleMapClickRef = useRef(async (lat: number, lng: number) => {
+    // This will be replaced after initialization
+  });
+
+  // Handle map clicks - separate effect that updates the click handler
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    
+    const map = mapInstanceRef.current;
+    const clickHandler = (e: any) => {
+      if (pickerMode) {
+        handleMapClickRef.current(e.latlng.lat, e.latlng.lng);
+      }
+    };
+    
+    map.on('click', clickHandler);
+    
+    return () => {
+      map.off('click', clickHandler);
     };
   }, [pickerMode]);
 
@@ -118,6 +139,9 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
       setPickerIndex(-1);
     }
   };
+
+  // Assign the handler to ref so the map click effect can access it
+  handleMapClickRef.current = handleMapClick;
 
   const addOrUpdatePoint = ({ lat, lng, name, type, index }: { 
     lat: number; lng: number; name: string; type: RoutePoint['type']; index: number 
@@ -154,12 +178,20 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
 
     setPoints(newPoints);
     updateMarkersAndRoute(newPoints);
+    
+    // Pan map to the new point
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.panTo([lat, lng]);
+    }
   };
 
   const updatePoint = (id: string, updates: Partial<RoutePoint>) => {
-    const newPoints = points.map(p => p.id === id ? { ...p, ...updates } : p);
-    setPoints(newPoints);
-    updateMarkersAndRoute(newPoints);
+    setPoints(currentPoints => {
+      const newPoints = currentPoints.map(p => p.id === id ? { ...p, ...updates } : p);
+      // Update markers and route after state is set
+      setTimeout(() => updateMarkersAndRoute(newPoints), 0);
+      return newPoints;
+    });
   };
 
   const removePoint = (id: string) => {
@@ -201,28 +233,52 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
     
     if (type === 'start') {
       return L.divIcon({
-        html: `<div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg border-2 border-white">A</div>`,
-        className: 'custom-marker',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32]
+        className: '',
+        html: `<svg width="36" height="44" viewBox="0 0 36 44" style="cursor: grab; overflow: visible;">
+          <defs>
+            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/>
+            </filter>
+          </defs>
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="#22c55e" stroke="white" stroke-width="2" filter="url(#shadow)"/>
+          <text x="18" y="24" text-anchor="middle" fill="white" font-weight="bold" font-size="14" font-family="system-ui, sans-serif">A</text>
+        </svg>`,
+        iconSize: [36, 44],
+        iconAnchor: [18, 40]
       });
     }
     
     if (type === 'end') {
       return L.divIcon({
-        html: `<div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg border-2 border-white">B</div>`,
-        className: 'custom-marker',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32]
+        className: '',
+        html: `<svg width="36" height="44" viewBox="0 0 36 44" style="cursor: grab; overflow: visible;">
+          <defs>
+            <filter id="shadow2" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/>
+            </filter>
+          </defs>
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="#ef4444" stroke="white" stroke-width="2" filter="url(#shadow2)"/>
+          <text x="18" y="24" text-anchor="middle" fill="white" font-weight="bold" font-size="14" font-family="system-ui, sans-serif">B</text>
+        </svg>`,
+        iconSize: [36, 44],
+        iconAnchor: [18, 40]
       });
     }
     
     // Waypoint with number
     return L.divIcon({
-      html: `<div class="w-7 h-7 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shadow-lg border-2 border-white text-xs">${index}</div>`,
-      className: 'custom-marker',
-      iconSize: [28, 28],
-      iconAnchor: [14, 28]
+      className: '',
+      html: `<svg width="32" height="40" viewBox="0 0 32 40" style="cursor: grab; overflow: visible;">
+        <defs>
+          <filter id="shadow${index}" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/>
+          </filter>
+        </defs>
+        <path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 24 16 24s16-12 16-24c0-8.84-7.16-16-16-16z" fill="#4099ff" stroke="white" stroke-width="2" filter="url(#shadow${index})"/>
+        <text x="16" y="21" text-anchor="middle" fill="white" font-weight="bold" font-size="12" font-family="system-ui, sans-serif">${index}</text>
+      </svg>`,
+      iconSize: [32, 40],
+      iconAnchor: [16, 36]
     });
   };
 
@@ -243,7 +299,11 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
       const existingMarker = markersRef.current.get(point.id);
       
       if (existingMarker) {
-        existingMarker.setLatLng([point.lat, point.lng]);
+        // Only update position if marker hasn't been dragged (positions match)
+        const currentLatLng = existingMarker.getLatLng();
+        if (Math.abs(currentLatLng.lat - point.lat) > 0.0001 || Math.abs(currentLatLng.lng - point.lng) > 0.0001) {
+          existingMarker.setLatLng([point.lat, point.lng]);
+        }
         existingMarker.setIcon(getMarkerIcon(point.type, index, currentPoints.length));
       } else {
         const marker = L.marker([point.lat, point.lng], { 
@@ -251,11 +311,26 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
           draggable: true 
         }).addTo(mapInstanceRef.current);
         
+        // Add popup with location name
+        marker.bindPopup(`<b>${point.type === 'start' ? 'Start' : point.type === 'end' ? 'End' : 'Stop ' + index}</b><br>${point.name}`);
+        
         marker.on('dragend', (e: any) => {
           const newLatLng = e.target.getLatLng();
-          updatePoint(point.id, { lat: newLatLng.lat, lng: newLatLng.lng });
+          // Use a ref to get fresh point data
+          const pointId = point.id;
+          setPoints(currentPoints => {
+            const updatedPoints = currentPoints.map(p => 
+              p.id === pointId ? { ...p, lat: newLatLng.lat, lng: newLatLng.lng } : p
+            );
+            // Recalculate route with new positions
+            setTimeout(() => calculateRoute(updatedPoints), 0);
+            return updatedPoints;
+          });
         });
 
+        // Bring marker to front to ensure visibility
+        marker.setZIndexOffset(1000 - index);
+        
         markersRef.current.set(point.id, marker);
       }
     });
@@ -734,6 +809,14 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
           <div className="absolute top-4 right-4 bg-slate-800 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-dash-blue border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-white">Calculating route...</span>
+          </div>
+        )}
+
+        {/* Drag hint */}
+        {points.length > 0 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full shadow-lg flex items-center gap-2 pointer-events-none">
+            <div className="w-2 h-2 bg-dash-blue rounded-full animate-pulse" />
+            <span className="text-sm text-white">Drag markers to adjust positions</span>
           </div>
         )}
       </div>
