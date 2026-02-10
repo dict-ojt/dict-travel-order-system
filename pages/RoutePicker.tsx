@@ -86,7 +86,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     const L = (window as any).L;
     if (!L) return;
 
-    const map = L.map(mapRef.current, { zoomControl: false }).setView([12.8797, 121.774], 6);
+    const map = L.map(mapRef.current, { zoomControl: false }).setView([17.0, 121.8], 8);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -99,9 +99,10 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     // Delay bounds fitting to ensure map container is fully rendered
     setTimeout(() => {
       map.invalidateSize();
-      const philippinesBounds = L.latLngBounds([4.5, 116], [21, 127]);
-      if (philippinesBounds.isValid()) {
-        map.fitBounds(philippinesBounds, { padding: [50, 50] });
+      // Region 2 bounds (approximate covering Cagayan Valley)
+      const region2Bounds = L.latLngBounds([15.5, 120.5], [19.0, 123.0]);
+      if (region2Bounds.isValid()) {
+        map.fitBounds(region2Bounds, { padding: [50, 50] });
       }
     }, 100);
 
