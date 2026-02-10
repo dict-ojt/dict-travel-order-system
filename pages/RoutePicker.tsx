@@ -104,10 +104,14 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg, init
       name: initialStartPoint.name,
       type: 'start'
     };
-    setPoints([startPoint]);
-    updateMarkersAndRoute([startPoint]);
-    onClearInitialStartPoint?.();
-    mapInstanceRef.current.panTo([initialStartPoint.lat, initialStartPoint.lng]);
+    const newPoints = [startPoint];
+    setPoints(newPoints);
+    // Delay to ensure map is fully initialized
+    setTimeout(() => {
+      updateMarkersAndRoute(newPoints);
+      onClearInitialStartPoint?.();
+      mapInstanceRef.current?.panTo([initialStartPoint.lat, initialStartPoint.lng]);
+    }, 100);
   }, [initialStartPoint?.name, initialStartPoint?.lat, initialStartPoint?.lng]);
 
   const handleMapClickRef = useRef(async (lat: number, lng: number) => {
