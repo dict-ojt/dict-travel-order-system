@@ -711,9 +711,80 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
             </div>
           ))}
 
+          {/* Add Stop Button / New Waypoint Input - Between Start and End */}
+          {startPoint && (
+            pickerMode === 'waypoint' && pickerIndex > waypoints.length ? (
+              // New stop input mode
+              <div className="relative pl-4">
+                <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
+                <div className="w-full p-3 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
+                      {waypoints.length + 1}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          searchLocation(e.target.value);
+                        }}
+                        placeholder={`Search stop ${waypoints.length + 1}...`}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        setPickerMode(null);
+                        setPickerIndex(-1);
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                      className="p-1 hover:bg-slate-600 rounded"
+                    >
+                      <X className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                  {/* Search results */}
+                  {searchResults.length > 0 && (
+                    <div className="bg-slate-700 border border-slate-600 rounded-lg max-h-48 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.place_id}
+                          onClick={() => selectSearchResult(result)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-600 border-b border-slate-600 last:border-0"
+                        >
+                          <p className="text-sm text-white truncate">{result.display_name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Add stop button - show if we have start but no end, OR if we have both
+              (!endPoint || (startPoint && endPoint)) && (
+                <div className="relative pl-4">
+                  {/* Connector line from above */}
+                  <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
+                  <button
+                    onClick={addStop}
+                    className="w-full flex items-center gap-2 p-3 border-2 border-dashed border-slate-600 text-slate-400 rounded-xl hover:border-dash-blue hover:text-dash-blue transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="text-sm">Add stop</span>
+                  </button>
+                </div>
+              )
+            )
+          )}
+
           {/* End Point */}
           <div className="relative">
-            {waypoints.length > 0 && <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />}
+            {/* Show connector if there are waypoints, or add stop is active, or start exists (since add stop button shows when start exists) */}
+            {(waypoints.length > 0 || (pickerMode === 'waypoint' && pickerIndex > waypoints.length) || (startPoint && !endPoint)) && <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />}
             {pickerMode === 'end' ? (
               // Edit mode - show input
               <div className="w-full p-4 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
@@ -793,70 +864,6 @@ const RoutePicker: React.FC<RoutePickerProps> = ({ onNavigate, onSelectLeg }) =>
               </button>
             )}
           </div>
-
-          {/* Add Stop Button / New Waypoint Input */}
-          {startPoint && endPoint && (
-            pickerMode === 'waypoint' && pickerIndex > waypoints.length ? (
-              // New stop input mode
-              <div className="relative pl-4">
-                <div className="absolute left-6 -top-3 w-0.5 h-6 bg-slate-600" />
-                <div className="w-full p-3 rounded-xl border-2 border-dash-blue bg-dash-blue/10">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 bg-dash-blue rounded-full flex items-center justify-center text-white font-bold shrink-0 text-sm">
-                      {waypoints.length + 1}
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          searchLocation(e.target.value);
-                        }}
-                        placeholder={`Search stop ${waypoints.length + 1}...`}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-dash-blue text-sm"
-                        autoFocus
-                      />
-                    </div>
-                    <button
-                      onClick={() => {
-                        setPickerMode(null);
-                        setPickerIndex(-1);
-                        setSearchQuery('');
-                        setSearchResults([]);
-                      }}
-                      className="p-1 hover:bg-slate-600 rounded"
-                    >
-                      <X className="w-4 h-4 text-slate-400" />
-                    </button>
-                  </div>
-                  {/* Search results */}
-                  {searchResults.length > 0 && (
-                    <div className="bg-slate-700 border border-slate-600 rounded-lg max-h-48 overflow-y-auto">
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.place_id}
-                          onClick={() => selectSearchResult(result)}
-                          className="w-full px-3 py-2 text-left hover:bg-slate-600 border-b border-slate-600 last:border-0"
-                        >
-                          <p className="text-sm text-white truncate">{result.display_name}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              // Add stop button
-              <button
-                onClick={addStop}
-                className="w-full flex items-center gap-2 p-3 border-2 border-dashed border-slate-600 text-slate-400 rounded-xl hover:border-dash-blue hover:text-dash-blue transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="text-sm">Add stop</span>
-              </button>
-            )
-          )}
 
           {/* Click on map hint */}
           {pickerMode && (
