@@ -10,6 +10,7 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const stats = getDashboardStats();
 
   if (selectedApproval) {
@@ -22,10 +23,12 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
     );
   }
 
-  const filteredApprovals = approvals.filter(a =>
-    a.requestorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.purpose.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredApprovals = approvals.filter(a => {
+    const matchesSearch = a.requestorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.purpose.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getLegCount = (approval: Approval) => {
     const to = getTravelOrderById(approval.travelOrderId);
@@ -42,10 +45,10 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
   };
 
   const statsConfig = [
-    { label: 'Pending', value: stats.pendingApprovals, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-100 dark:border-amber-800' },
-    { label: 'Approved Today', value: stats.approvedToday, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-100 dark:border-green-800' },
-    { label: 'Rejected Today', value: stats.rejectedToday, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-100 dark:border-red-800' },
-    { label: 'Avg. Response', value: '1.4d', icon: Timer, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-100 dark:border-blue-800' }
+    { label: 'Pending', value: stats.pendingApprovals, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-100 dark:border-amber-800', ring: 'ring-amber-500', filter: 'pending' as const },
+    { label: 'Approved Today', value: stats.approvedToday, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-100 dark:border-green-800', ring: 'ring-green-500', filter: 'approved' as const },
+    { label: 'Rejected Today', value: stats.rejectedToday, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-100 dark:border-red-800', ring: 'ring-red-500', filter: 'rejected' as const },
+    { label: 'Avg. Response', value: '1.4d', icon: Timer, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-100 dark:border-blue-800', ring: '', filter: null }
   ];
 
   return (
@@ -61,20 +64,35 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input type="text" placeholder="Search approvals..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="text" placeholder="Search approvals..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+        </div>
+        {statusFilter !== 'all' && (
+          <button onClick={() => setStatusFilter('all')} className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
+            Clear filter
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statsConfig.map((s, i) => (
-          <div key={i} className={`bg-white dark:bg-slate-800 border ${s.border} rounded-xl p-4 cursor-pointer hover:shadow-md transition-all`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 ${s.bg} rounded-full flex items-center justify-center`}><s.icon className={`w-5 h-5 ${s.color}`} /></div>
-              <div><p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p><p className="text-xs text-slate-500">{s.label}</p></div>
+        {statsConfig.map((s, i) => {
+          const isActive = s.filter && statusFilter === s.filter;
+          const isClickable = s.filter !== null;
+          return (
+            <div
+              key={i}
+              onClick={() => isClickable && setStatusFilter(s.filter === statusFilter ? 'all' : s.filter)}
+              className={`bg-white dark:bg-slate-800 border ${s.border} rounded-xl p-4 transition-all ${isClickable ? 'cursor-pointer hover:shadow-md' : ''} ${isActive ? `ring-2 ${s.ring}` : ''}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 ${s.bg} rounded-full flex items-center justify-center`}><s.icon className={`w-5 h-5 ${s.color}`} /></div>
+                <div><p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p><p className="text-xs text-slate-500">{s.label}</p></div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {viewMode === 'simple' ? (
