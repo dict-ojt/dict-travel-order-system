@@ -431,18 +431,44 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         // Add popup with location name
         marker.bindPopup(`<b>${point.type === 'start' ? 'Start' : point.type === 'end' ? 'End' : 'Stop ' + index}</b><br>${point.name}`);
         
-        marker.on('dragend', (e: any) => {
+        marker.on('dragend', async (e: any) => {
           const newLatLng = e.target.getLatLng();
-          // Use a ref to get fresh point data
           const pointId = point.id;
-          setPoints(currentPoints => {
-            const updatedPoints = currentPoints.map(p => 
-              p.id === pointId ? { ...p, lat: newLatLng.lat, lng: newLatLng.lng } : p
-            );
-            // Recalculate route with new positions
-            setTimeout(() => calculateRoute(updatedPoints), 0);
-            return updatedPoints;
-          });
+          
+          setIsLoading(true);
+
+          try {
+            // Reverse geocode to get new address name
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLatLng.lat}&lon=${newLatLng.lng}&countrycodes=ph`);
+            const data = await response.json();
+            const newName = data.display_name?.split(',')[0] || `${newLatLng.lat.toFixed(4)}, ${newLatLng.lng.toFixed(4)}`;
+
+            // Update popup content
+            marker.setPopupContent(`<b>${point.type === 'start' ? 'Start' : point.type === 'end' ? 'End' : 'Stop ' + index}</b><br>${newName}`);
+
+            setPoints(currentPoints => {
+              const updatedPoints = currentPoints.map(p => 
+                p.id === pointId ? { ...p, lat: newLatLng.lat, lng: newLatLng.lng, name: newName } : p
+              );
+              // Recalculate route with new positions
+              setTimeout(() => calculateRoute(updatedPoints), 0);
+              return updatedPoints;
+            });
+          } catch (error) {
+            console.error('Reverse geocoding error:', error);
+            // Fallback to coords if geocoding fails
+            const newName = `${newLatLng.lat.toFixed(4)}, ${newLatLng.lng.toFixed(4)}`;
+            
+            setPoints(currentPoints => {
+              const updatedPoints = currentPoints.map(p => 
+                p.id === pointId ? { ...p, lat: newLatLng.lat, lng: newLatLng.lng, name: newName } : p
+              );
+              setTimeout(() => calculateRoute(updatedPoints), 0);
+              return updatedPoints;
+            });
+          } finally {
+            setIsLoading(false);
+          }
         });
 
         // Bring marker to front to ensure visibility
