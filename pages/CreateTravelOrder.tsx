@@ -497,6 +497,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
                             <span className="text-slate-500">From:</span>
                             <LocationSearchInput
                               value={leg.fromLocationName || getLocationName(leg.fromLocationId)}
+                              disabled={index > 0}
                               onChange={(val, id, lat, lng) => {
                                 updateLeg(leg.id, { 
                                   fromLocationName: val, 

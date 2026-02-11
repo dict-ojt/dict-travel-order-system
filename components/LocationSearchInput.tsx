@@ -7,6 +7,7 @@ interface LocationSearchInputProps {
   onChange: (value: string, id?: string, lat?: number, lng?: number) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 interface LocationSuggestion {
@@ -22,7 +23,8 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
   value, 
   onChange, 
   placeholder, 
-  className 
+  className,
+  disabled
 }) => {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -48,7 +50,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!query || query.length < 2) {
+      if (disabled || !query || query.length < 2) {
         setSuggestions([]);
         return;
       }
@@ -120,6 +122,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
         <input
           type="text"
           value={query}
+          disabled={disabled}
           onChange={(e) => {
             setQuery(e.target.value);
             setShowSuggestions(true);
@@ -127,10 +130,10 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
             onChange(e.target.value);
           }}
           onFocus={() => {
-            if (query.length >= 2) setShowSuggestions(true);
+            if (!disabled && query.length >= 2) setShowSuggestions(true);
           }}
           placeholder={placeholder}
-          className={`w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-dash-blue/50 ${className}`}
+          className={`w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-dash-blue/50 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
         />
         <div className="absolute left-2.5 top-1/2 -translate-y-1/2">
           {isLoading ? (
