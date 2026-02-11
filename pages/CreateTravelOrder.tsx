@@ -252,6 +252,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
       const toId = '';
       const today = new Date();
       const startDate = prevLeg ? prevLeg.endDate : today.toISOString().split('T')[0];
+      const fromLocationName = prevLeg ? (prevLeg.toLocationName || getLocationName(prevLeg.toLocationId)) : '';
       
       setLegs([...legs, {
         id: Date.now().toString(),
@@ -260,7 +261,9 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
         startDate,
         endDate: '',
         distanceKm: 0,
-        isReturn
+        isReturn,
+        fromLocationName,
+        toLocationName: ''
       }]);
     }
   };
@@ -269,7 +272,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
     setLegs(legs.map(leg => {
       if (leg.id !== id) return leg;
       const updated = { ...leg, ...updates };
-      if (updated.fromLocationId && updated.toLocationId) {
+      if ((updates.fromLocationId || updates.toLocationId) && updated.fromLocationId && updated.toLocationId) {
         updated.distanceKm = calculateDistance(updated.fromLocationId, updated.toLocationId);
       }
       return updated;
@@ -422,32 +425,41 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
                           {index + 1}
                         </div>
                         <div className="flex-1 space-y-3">
-                          <div className="flex items-center gap-2 text-sm">
+                          <div className="flex items-center gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
                             <span className="text-slate-500">From:</span>
-                            {leg.fromLocationName ? (
-                              <span className="font-medium text-dash-blue">{leg.fromLocationName}</span>
-                            ) : (
-                              <span className="font-medium">{getLocationName(leg.fromLocationId)}</span>
-                            )}
+                            <input
+                              type="text"
+                              list="locations"
+                              value={leg.fromLocationName || getLocationName(leg.fromLocationId)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const source = travelSources.find(s => s.name === val);
+                                updateLeg(leg.id, { 
+                                  fromLocationName: val, 
+                                  fromLocationId: source ? source.id : '' 
+                                });
+                              }}
+                              placeholder="Origin"
+                              className="flex-1 min-w-[120px] px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
+                            />
+                            
                             <ArrowRight className="w-4 h-4 text-slate-400" />
-                            {leg.toLocationName ? (
-                              <span className="font-medium text-dash-blue">{leg.toLocationName}</span>
-                            ) : (
-                              <select
-                                value={leg.toLocationId}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  updateLeg(leg.id, { toLocationId: e.target.value });
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
-                              >
-                                <option value="">Select destination</option>
-                                {travelSources.filter(s => s.id !== leg.fromLocationId).map(source => (
-                                  <option key={source.id} value={source.id}>{source.name}</option>
-                                ))}
-                              </select>
-                            )}
+                            
+                            <input
+                              type="text"
+                              list="locations"
+                              value={leg.toLocationName || getLocationName(leg.toLocationId)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const source = travelSources.find(s => s.name === val);
+                                updateLeg(leg.id, { 
+                                  toLocationName: val, 
+                                  toLocationId: source ? source.id : '' 
+                                });
+                              }}
+                              placeholder="Destination"
+                              className="flex-1 min-w-[120px] px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
+                            />
                           </div>
                           
                           {/* Waypoints display */}
@@ -463,9 +475,16 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
                           )}
                           
                           <div className="flex flex-wrap items-center gap-4">
-                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400" onClick={(e) => e.stopPropagation()}>
                               <Route className="w-4 h-4" />
-                              <span>{leg.distanceKm > 0 ? `${leg.distanceKm} km` : 'Auto-calculated'}</span>
+                              <input
+                                type="number"
+                                value={leg.distanceKm}
+                                onChange={(e) => updateLeg(leg.id, { distanceKm: parseFloat(e.target.value) || 0 })}
+                                placeholder="0"
+                                className="w-20 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm text-right"
+                              />
+                              <span>km</span>
                             </div>
 
                             <div className="flex items-start gap-2" onClick={(e) => e.stopPropagation()}>
@@ -545,8 +564,17 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
                 disabled={legs.some(l => l.isReturn)}
                 className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-dash-blue/50 dark:border-dash-blue/30 text-dash-blue rounded-lg hover:border-dash-blue hover:bg-dash-blue/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
+                <MapPin className="w-4 h-4" />
+                Add via Map
+              </button>
+
+              <button
+                onClick={() => addLeg(false)}
+                disabled={legs.some(l => l.isReturn)}
+                className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 rounded-lg hover:border-dash-blue hover:text-dash-blue hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              >
                 <Plus className="w-4 h-4" />
-                Add Travel Leg
+                Add Manual Leg
               </button>
               {legs.length > 0 && !legs.some(l => l.isReturn) && (
                 <button
@@ -861,6 +889,12 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
             {isSubmitting ? 'Creating...' : 'Create'}
           </button>
         </div>
+
+        <datalist id="locations">
+          {travelSources.map(source => (
+            <option key={source.id} value={source.name} />
+          ))}
+        </datalist>
       </div>
     </div>
   );
