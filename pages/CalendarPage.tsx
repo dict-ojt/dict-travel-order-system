@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, User, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, User, Calendar as CalendarIcon, X } from 'lucide-react';
 import { travelOrders } from '../data/database';
 
 interface DayData {
@@ -22,10 +22,8 @@ const CalendarPage: React.FC = () => {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   useEffect(() => {
-    // Select today by default
-    const today = new Date();
-    const todayData = getDayData(today.getDate());
-    if (todayData) setSelectedDay(todayData);
+    // We don't want to auto-select today, so this is now empty or can be removed if not needed for anything else.
+    // Keeping useEffect in case we need other initialization logic later.
   }, []);
 
   const getDaysInMonth = (date: Date) => {
@@ -211,14 +209,20 @@ const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Day Details Panel */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        {selectedDay ? (
-          <>
-            {/* Panel Header with Gradient */}
-            <div className="p-5 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-slate-800 dark:to-slate-800 border-b border-slate-100 dark:border-slate-700">
+      {/* Day Details Modal */}
+      {selectedDay && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setSelectedDay(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800 sticky top-0 z-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-dash-blue rounded-xl flex items-center justify-center shadow-sm">
+                <div className="w-12 h-12 bg-dash-blue rounded-xl flex items-center justify-center shadow-sm shrink-0">
                   <CalendarIcon className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -230,10 +234,16 @@ const CalendarPage: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <button 
+                onClick={() => setSelectedDay(null)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500 dark:text-slate-400"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
-            {/* Panel Content */}
-            <div className="p-5">
+            {/* Modal Content */}
+            <div className="p-5 overflow-y-auto flex-1">
               {selectedDay.events.length === 0 ? (
                 <div className="text-center py-10">
                   <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -275,16 +285,9 @@ const CalendarPage: React.FC = () => {
                 </div>
               )}
             </div>
-          </>
-        ) : (
-          <div className="text-center py-14">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-slate-700 dark:to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <CalendarIcon className="w-8 h-8 text-dash-blue dark:text-slate-400" />
-            </div>
-            <p className="text-slate-500 dark:text-slate-400">Select a day from the calendar to view travel orders</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
