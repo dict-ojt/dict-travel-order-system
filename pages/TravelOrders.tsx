@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Plus, FileText, Check, Clock, X, LayoutGrid, Table as TableIcon, MoreHorizontal, MapPin, Calendar, Car } from 'lucide-react';
 import { Page } from '../types';
 import { travelOrders, getDashboardStats, TravelOrder } from '../data/database';
+import TravelOrderDetails from './TravelOrderDetails';
 
 interface TravelOrdersProps { 
   onNavigate?: (page: Page) => void; 
@@ -9,6 +10,7 @@ interface TravelOrdersProps {
 }
 
 const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) => {
+  const [selectedOrder, setSelectedOrder] = useState<TravelOrder | null>(null);
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'completed'>('all');
@@ -32,6 +34,16 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) 
       default: return 'bg-slate-100 text-slate-600';
     }
   };
+
+  if (selectedOrder) {
+    return (
+      <TravelOrderDetails 
+        travelOrder={selectedOrder} 
+        onNavigate={onNavigate || (() => {})} 
+        onBack={() => setSelectedOrder(null)} 
+      />
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -104,7 +116,11 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) 
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {filteredOrders.map(o => (
-                  <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <tr 
+                    key={o.id} 
+                    onClick={() => setSelectedOrder(o)}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                  >
                     <td className="py-3 px-4"><span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs font-medium">{o.orderNumber}</span></td>
                     <td className="py-3 px-4"><div className="flex items-center gap-2"><img src={o.employeeAvatar} className="w-6 h-6 rounded-full" alt={o.employeeName} /><span className="text-sm">{o.employeeName}</span></div></td>
                     <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">{o.destinationName}</td>
@@ -120,7 +136,11 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) 
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredOrders.map(o => (
-            <div key={o.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-md transition-all">
+            <div 
+              key={o.id} 
+              onClick={() => setSelectedOrder(o)}
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3"><img src={o.employeeAvatar} alt={o.employeeName} className="w-10 h-10 rounded-full" /><div><p className="text-sm font-semibold text-slate-900 dark:text-white">{o.employeeName}</p><p className="text-xs text-slate-500">{o.divisionCode}</p></div></div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(o.status)}`}>{o.status}</span>
