@@ -43,6 +43,23 @@ interface CreateTravelOrderProps {
   setLegs: React.Dispatch<React.SetStateAction<TravelLeg[]>>;
   editingLegId?: string | null;
   onClearEditingState?: () => void;
+  travelers: Traveler[];
+  setTravelers: React.Dispatch<React.SetStateAction<Traveler[]>>;
+  fundSource: string;
+  setFundSource: React.Dispatch<React.SetStateAction<string>>;
+  vehicle: string;
+  setVehicle: React.Dispatch<React.SetStateAction<string>>;
+  expenses: string[];
+  setExpenses: React.Dispatch<React.SetStateAction<string[]>>;
+  approvalSteps: string;
+  setApprovalSteps: React.Dispatch<React.SetStateAction<string>>;
+  purpose: string;
+  setPurpose: React.Dispatch<React.SetStateAction<string>>;
+  remarks: string;
+  setRemarks: React.Dispatch<React.SetStateAction<string>>;
+  uploadedFiles: File[];
+  setUploadedFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  onResetData?: () => void;
 }
 
 interface Traveler {
@@ -58,11 +75,27 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
   legs, 
   setLegs,
   editingLegId: propEditingLegId,
-  onClearEditingState
+  onClearEditingState,
+  travelers,
+  setTravelers,
+  fundSource,
+  setFundSource,
+  vehicle,
+  setVehicle,
+  expenses,
+  setExpenses,
+  approvalSteps,
+  setApprovalSteps,
+  purpose,
+  setPurpose,
+  remarks,
+  setRemarks,
+  uploadedFiles,
+  setUploadedFiles,
+  onResetData
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dateErrors, setDateErrors] = useState<Record<string, string>>({});
   const hasAddedLeg = useRef(false);
@@ -130,14 +163,6 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
     }
   }, [initialRouteLeg, onClearRouteLeg, setLegs, propEditingLegId, localEditingLegId, onClearEditingState]);
   
-  const [travelers, setTravelers] = useState<Traveler[]>([{ id: '1', employeeId: currentUser.id }]);
-  const [fundSource, setFundSource] = useState('');
-  const [vehicle, setVehicle] = useState('');
-  const [expenses, setExpenses] = useState<string[]>([]);
-  const [approvalSteps, setApprovalSteps] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [remarks, setRemarks] = useState('');
-
   const handleEditLeg = (leg: TravelLeg) => {
     setLocalEditingLegId(leg.id);
     
@@ -327,15 +352,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
     setIsSubmitting(false);
 
     if (createAnother) {
-      setLegs([]);
-      setTravelers([{ id: '1', employeeId: currentUser.id }]);
-      setFundSource('');
-      setVehicle('');
-      setExpenses([]);
-      setApprovalSteps('');
-      setPurpose('');
-      setRemarks('');
-      setUploadedFiles([]);
+      onResetData?.();
       setDateErrors({});
     } else {
       onNavigate(Page.TRAVEL_ORDERS);

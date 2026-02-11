@@ -14,6 +14,7 @@ import RoutePicker from './pages/RoutePicker';
 import Settings from './pages/Settings';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import { currentUser } from './data/database';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -49,6 +50,37 @@ const App: React.FC = () => {
     waypoints?: Array<{ name: string; lat: number; lng: number }>;
   }>>([]);
 
+  const [travelerList, setTravelerList] = useState<Array<{ id: string; employeeId: string }>>([
+    { id: '1', employeeId: currentUser.id }
+  ]);
+  const [fundSource, setFundSource] = useState('');
+  const [vehicle, setVehicle] = useState('');
+  const [expenses, setExpenses] = useState<string[]>([]);
+  const [approvalSteps, setApprovalSteps] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  const resetTravelOrderData = () => {
+    setTravelLegs([]);
+    setSelectedRouteLeg(null);
+    setPreviousLegForNext(null);
+    setIsReturnLeg(false);
+    setReturnEndPoint(null);
+    setEditingLegData(null);
+    setEditingLegId(null);
+    
+    // Reset lifted states
+    setTravelerList([{ id: '1', employeeId: currentUser.id }]);
+    setFundSource('');
+    setVehicle('');
+    setExpenses([]);
+    setApprovalSteps('');
+    setPurpose('');
+    setRemarks('');
+    setUploadedFiles([]);
+  };
+
   useEffect(() => {
     const root = window.document.documentElement;
     localStorage.setItem('theme', theme);
@@ -80,7 +112,7 @@ const App: React.FC = () => {
     switch (currentPage) {
       case Page.DASHBOARD: return <Dashboard onSignOut={() => setIsLoggedIn(false)} onNavigate={setCurrentPage} />;
       case Page.EMPLOYEES: return <Employees />;
-      case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} />;
+      case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} onResetData={resetTravelOrderData} />;
       case Page.CREATE_TRAVEL_ORDER: return (
         <CreateTravelOrder 
           onNavigate={setCurrentPage} 
@@ -103,6 +135,23 @@ const App: React.FC = () => {
             setEditingLegId(null);
             setEditingLegData(null);
           }}
+          travelers={travelerList}
+          setTravelers={setTravelerList}
+          fundSource={fundSource}
+          setFundSource={setFundSource}
+          vehicle={vehicle}
+          setVehicle={setVehicle}
+          expenses={expenses}
+          setExpenses={setExpenses}
+          approvalSteps={approvalSteps}
+          setApprovalSteps={setApprovalSteps}
+          purpose={purpose}
+          setPurpose={setPurpose}
+          remarks={remarks}
+          setRemarks={setRemarks}
+          uploadedFiles={uploadedFiles}
+          setUploadedFiles={setUploadedFiles}
+          onResetData={resetTravelOrderData}
         />
       );
       case Page.ROUTE_PICKER: return (
