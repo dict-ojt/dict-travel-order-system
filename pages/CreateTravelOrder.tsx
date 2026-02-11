@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight, Lock, Unlock } from 'lucide-react';
 import { Page, RouteLeg } from '../types';
 import { travelSources, employees, currentUser, TravelOrder } from '../data/database';
 import LocationSearchInput from '../components/LocationSearchInput';
@@ -18,6 +18,7 @@ interface TravelLeg {
   fromLng?: number;
   toLat?: number;
   toLng?: number;
+  isFromLocked?: boolean;
   waypoints?: Array<{
     name: string;
     lat: number;
@@ -153,6 +154,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
           fromLng: initialRouteLeg.fromLocation.lng,
           toLat: initialRouteLeg.toLocation.lat,
           toLng: initialRouteLeg.toLocation.lng,
+          isFromLocked: legs.length > 0,
           waypoints: initialRouteLeg.waypoints
         };
         setLegs(prev => [...prev, newLeg]);
@@ -287,7 +289,8 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
         fromLng: prevLeg?.toLng,
         toLocationName: firstLeg.fromLocationName,
         toLat: firstLeg.fromLat,
-        toLng: firstLeg.fromLng
+        toLng: firstLeg.fromLng,
+        isFromLocked: true
       }]);
     } else {
       const fromId = prevLeg ? prevLeg.toLocationId : '';
@@ -305,7 +308,8 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
         distanceKm: 0,
         isReturn,
         fromLocationName,
-        toLocationName: ''
+        toLocationName: '',
+        isFromLocked: !!prevLeg
       }]);
     }
   };
@@ -495,20 +499,39 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
                             <span className="text-slate-500">From:</span>
-                            <LocationSearchInput
-                              value={leg.fromLocationName || getLocationName(leg.fromLocationId)}
-                              disabled={index > 0}
-                              onChange={(val, id, lat, lng) => {
-                                updateLeg(leg.id, { 
-                                  fromLocationName: val, 
-                                  fromLocationId: id || '',
-                                  fromLat: lat || 0,
-                                  fromLng: lng || 0
-                                });
-                              }}
-                              placeholder="Origin"
-                              className="min-w-[120px]"
-                            />
+                            <div className="flex items-center gap-1">
+                              <LocationSearchInput
+                                value={leg.fromLocationName || getLocationName(leg.fromLocationId)}
+                                disabled={index > 0 && leg.isFromLocked !== false}
+                                onChange={(val, id, lat, lng) => {
+                                  updateLeg(leg.id, { 
+                                    fromLocationName: val, 
+                                    fromLocationId: id || '',
+                                    fromLat: lat || 0,
+                                    fromLng: lng || 0
+                                  });
+                                }}
+                                placeholder="Origin"
+                                className="min-w-[120px]"
+                              />
+                              {index > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateLeg(leg.id, { isFromLocked: !leg.isFromLocked });
+                                  }}
+                                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                  title={leg.isFromLocked !== false ? "Unlock start location" : "Lock start location"}
+                                >
+                                  {leg.isFromLocked !== false ? (
+                                    <Lock className="w-3 h-3" />
+                                  ) : (
+                                    <Unlock className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                             
                             <ArrowRight className="w-4 h-4 text-slate-400" />
                             
