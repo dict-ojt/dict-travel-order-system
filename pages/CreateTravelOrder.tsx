@@ -665,32 +665,41 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
                 Add Manual Leg
               </button>
               {legs.length > 0 && !legs.some(l => l.isReturn) && (
-                <button
-                  onClick={() => {
-                    const prevLeg = legs[legs.length - 1];
-                    const firstLeg = legs[0];
-                    const prevRouteLeg = prevLeg ? {
-                      fromLocation: { name: '', lat: 0, lng: 0 },
-                      toLocation: {
-                        name: prevLeg.toLocationName || getLocationName(prevLeg.toLocationId),
-                        lat: prevLeg.toLat || 0,
-                        lng: prevLeg.toLng || 0
-                      },
-                      distanceKm: 0,
-                      durationMin: 0
-                    } : null;
-                    const returnEndPoint = firstLeg ? {
-                      name: firstLeg.fromLocationName || getLocationName(firstLeg.fromLocationId),
-                      lat: firstLeg.fromLat || 0,
-                      lng: firstLeg.fromLng || 0
-                    } : null;
-                    onOpenRoutePicker?.(prevRouteLeg, true, returnEndPoint);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 rounded-lg hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Return Leg
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      const prevLeg = legs[legs.length - 1];
+                      const firstLeg = legs[0];
+                      const prevRouteLeg = prevLeg ? {
+                        fromLocation: { name: '', lat: 0, lng: 0 },
+                        toLocation: {
+                          name: prevLeg.toLocationName || getLocationName(prevLeg.toLocationId),
+                          lat: prevLeg.toLat || 0,
+                          lng: prevLeg.toLng || 0
+                        },
+                        distanceKm: 0,
+                        durationMin: 0
+                      } : null;
+                      const returnEndPoint = firstLeg ? {
+                        name: firstLeg.fromLocationName || getLocationName(firstLeg.fromLocationId),
+                        lat: firstLeg.fromLat || 0,
+                        lng: firstLeg.fromLng || 0
+                      } : null;
+                      onOpenRoutePicker?.(prevRouteLeg, true, returnEndPoint);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 rounded-lg hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm font-medium"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Add Return Map
+                  </button>
+                  <button
+                    onClick={() => addLeg(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 rounded-lg hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Return Manual
+                  </button>
+                </>
               )}
             </div>
 
