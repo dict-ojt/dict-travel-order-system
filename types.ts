@@ -8,7 +8,9 @@ export enum Page {
   APPROVALS = 'approvals',
   APPROVAL_DETAILS = 'approval_details',
   TRAVEL_ORDERS = 'travel_orders',
+  TRAVEL_ORDER_DETAILS = 'travel_order_details',
   CREATE_TRAVEL_ORDER = 'create_travel_order',
+  DASHBOARD_APPROVAL_DETAILS = 'dashboard_approval_details',
   ROUTE_PICKER = 'route_picker',
   USERS = 'users',
   CALENDAR = 'calendar'

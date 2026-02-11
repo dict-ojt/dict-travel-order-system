@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Users, CheckCircle2, FileText, RefreshCcw } from 'lucide-react';
 import { Page } from '../types';
 import { getDashboardStats, employees, approvals, Approval } from '../data/database';
-import ApprovalDetails from './ApprovalDetails';
 
 interface DashboardProps {
   onSignOut?: () => void;
   onNavigate?: (page: Page) => void;
+  onSelectApproval?: (approval: Approval) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectApproval }) => {
   const stats = getDashboardStats();
 
   const statCards = [
@@ -59,16 +58,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     .filter(a => a.status === 'approved')
     .sort((a, b) => new Date(b.processedAt || 0).getTime() - new Date(a.processedAt || 0).getTime())
     .slice(0, 3);
-
-  if (selectedApproval) {
-    return (
-      <ApprovalDetails 
-        approval={selectedApproval} 
-        onNavigate={onNavigate || (() => {})} 
-        onBack={() => setSelectedApproval(null)} 
-      />
-    );
-  }
 
   return (
     <div className="space-y-8">
@@ -130,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               {recentApprovals.map((approval) => (
                 <div 
                   key={approval.id} 
-                  onClick={() => setSelectedApproval(approval)}
+                  onClick={() => onSelectApproval?.(approval)}
                   className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 >
                   <img

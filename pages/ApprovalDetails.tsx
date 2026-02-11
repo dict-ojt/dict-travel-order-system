@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { ArrowLeft, MapPin, Calendar, Car, Wallet, Users, CheckCircle, FileText, Route, ArrowRight, Clock, X, Download, CheckCircle2, XCircle } from 'lucide-react';
+import { MapPin, Calendar, Car, Wallet, Users, CheckCircle, FileText, Route, ArrowRight, Clock, X, Download, CheckCircle2, XCircle } from 'lucide-react';
 import { Page } from '../types';
 import { Approval, getTravelOrderById, getEmployeeById, travelSources, employees, currentUser, TravelLeg } from '../data/database';
 
 interface ApprovalDetailsProps {
   approval: Approval;
   onNavigate: (page: Page) => void;
-  onBack: () => void;
 }
 
-const ApprovalDetails: React.FC<ApprovalDetailsProps> = ({ approval, onNavigate, onBack }) => {
+const ApprovalDetails: React.FC<ApprovalDetailsProps> = ({ approval, onNavigate }) => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectRemarks, setRejectRemarks] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -80,7 +79,7 @@ const ApprovalDetails: React.FC<ApprovalDetailsProps> = ({ approval, onNavigate,
     setIsProcessing(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     setIsProcessing(false);
-    onBack();
+    onNavigate(Page.APPROVALS);
   };
 
   const handleReject = async () => {
@@ -88,16 +87,13 @@ const ApprovalDetails: React.FC<ApprovalDetailsProps> = ({ approval, onNavigate,
     await new Promise(resolve => setTimeout(resolve, 800));
     setIsProcessing(false);
     setShowRejectModal(false);
-    onBack();
+    onNavigate(Page.APPROVALS);
   };
 
   return (
     <div className="max-w-5xl mx-auto pb-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-          <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-        </button>
         <div className="flex-1">
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Approval Details</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">{approval.orderNumber}</p>

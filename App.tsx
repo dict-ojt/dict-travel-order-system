@@ -14,7 +14,10 @@ import RoutePicker from './pages/RoutePicker';
 import Settings from './pages/Settings';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import { currentUser } from './data/database';
+import Breadcrumbs from './components/Breadcrumbs';
+import ApprovalDetails from './pages/ApprovalDetails';
+import TravelOrderDetails from './pages/TravelOrderDetails';
+import { TravelOrder, currentUser, Approval } from './data/database';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -60,6 +63,8 @@ const App: React.FC = () => {
   const [purpose, setPurpose] = useState('');
   const [remarks, setRemarks] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [selectedTravelOrder, setSelectedTravelOrder] = useState<TravelOrder | null>(null);
+  const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
 
   const resetTravelOrderData = () => {
     setTravelLegs([]);
@@ -69,6 +74,8 @@ const App: React.FC = () => {
     setReturnEndPoint(null);
     setEditingLegData(null);
     setEditingLegId(null);
+    setSelectedTravelOrder(null);
+    setSelectedApproval(null);
     
     // Reset lifted states
     setTravelerList([{ id: '1', employeeId: currentUser.id }]);
@@ -110,9 +117,45 @@ const App: React.FC = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case Page.DASHBOARD: return <Dashboard onSignOut={() => setIsLoggedIn(false)} onNavigate={setCurrentPage} />;
+      case Page.DASHBOARD: return (
+        <Dashboard 
+          onSignOut={() => setIsLoggedIn(false)} 
+          onNavigate={setCurrentPage} 
+          onSelectApproval={(approval) => {
+            setSelectedApproval(approval);
+            setCurrentPage(Page.DASHBOARD_APPROVAL_DETAILS);
+          }}
+        />
+      );
+      case Page.DASHBOARD_APPROVAL_DETAILS: return selectedApproval ? (
+        <ApprovalDetails 
+          approval={selectedApproval} 
+          onNavigate={setCurrentPage} 
+        />
+      ) : (
+        <Dashboard 
+          onSignOut={() => setIsLoggedIn(false)} 
+          onNavigate={setCurrentPage}
+          onSelectApproval={(approval) => setSelectedApproval(approval)}
+        />
+      );
       case Page.EMPLOYEES: return <Employees />;
-      case Page.TRAVEL_ORDERS: return <TravelOrders onNavigate={setCurrentPage} onResetData={resetTravelOrderData} />;
+      case Page.TRAVEL_ORDERS: return (
+        <TravelOrders 
+          onNavigate={setCurrentPage} 
+          onResetData={resetTravelOrderData} 
+          onSelectOrder={(order) => {
+            setSelectedTravelOrder(order);
+            setCurrentPage(Page.TRAVEL_ORDER_DETAILS);
+          }}
+        />
+      );
+      case Page.TRAVEL_ORDER_DETAILS: return selectedTravelOrder ? (
+        <TravelOrderDetails 
+          travelOrder={selectedTravelOrder} 
+          onNavigate={setCurrentPage} 
+        />
+      ) : <TravelOrders onNavigate={setCurrentPage} onResetData={resetTravelOrderData} />;
       case Page.CREATE_TRAVEL_ORDER: return (
         <CreateTravelOrder 
           onNavigate={setCurrentPage} 
@@ -173,7 +216,21 @@ const App: React.FC = () => {
         />
       );
       case Page.TRAVEL_WORKFLOWS: return <TravelWorkflows />;
-      case Page.APPROVALS: return <Approvals onNavigate={setCurrentPage} />;
+      case Page.APPROVALS: return (
+        <Approvals 
+          onNavigate={setCurrentPage} 
+          onSelectApproval={(approval) => {
+            setSelectedApproval(approval);
+            setCurrentPage(Page.APPROVAL_DETAILS);
+          }}
+        />
+      );
+      case Page.APPROVAL_DETAILS: return selectedApproval ? (
+        <ApprovalDetails 
+          approval={selectedApproval} 
+          onNavigate={setCurrentPage}
+        />
+      ) : <Approvals onNavigate={setCurrentPage} />;
       case Page.CALENDAR: return <CalendarPage />;
       case Page.DIVISIONS: return <Divisions />;
       case Page.TRAVEL_SOURCES: return <TravelSources />;
@@ -193,6 +250,7 @@ const App: React.FC = () => {
           setTheme={setTheme}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+          <Breadcrumbs currentPage={currentPage} onNavigate={setCurrentPage} />
           {renderPage()}
         </main>
       </div>

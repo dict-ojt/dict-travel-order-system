@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { Search, Plus, FileText, Check, Clock, X, LayoutGrid, Table as TableIcon, MoreHorizontal, MapPin, Calendar, Car } from 'lucide-react';
 import { Page } from '../types';
 import { travelOrders, getDashboardStats, TravelOrder } from '../data/database';
-import TravelOrderDetails from './TravelOrderDetails';
 
 interface TravelOrdersProps { 
-  onNavigate?: (page: Page) => void; 
+  onNavigate: (page: Page) => void; 
   onResetData?: () => void;
+  onSelectOrder?: (order: TravelOrder) => void;
 }
 
-const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) => {
-  const [selectedOrder, setSelectedOrder] = useState<TravelOrder | null>(null);
+const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData, onSelectOrder }) => {
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'completed'>('all');
@@ -34,16 +33,6 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) 
       default: return 'bg-slate-100 text-slate-600';
     }
   };
-
-  if (selectedOrder) {
-    return (
-      <TravelOrderDetails 
-        travelOrder={selectedOrder} 
-        onNavigate={onNavigate || (() => {})} 
-        onBack={() => setSelectedOrder(null)} 
-      />
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -118,7 +107,7 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) 
                 {filteredOrders.map(o => (
                   <tr 
                     key={o.id} 
-                    onClick={() => setSelectedOrder(o)}
+                    onClick={() => onSelectOrder?.(o)}
                     className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
                   >
                     <td className="py-3 px-4"><span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs font-medium">{o.orderNumber}</span></td>
@@ -138,7 +127,7 @@ const TravelOrders: React.FC<TravelOrdersProps> = ({ onNavigate, onResetData }) 
           {filteredOrders.map(o => (
             <div 
               key={o.id} 
-              onClick={() => setSelectedOrder(o)}
+              onClick={() => onSelectOrder?.(o)}
               className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between mb-4">

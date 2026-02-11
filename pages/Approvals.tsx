@@ -4,24 +4,16 @@ import { Page } from '../types';
 import { approvals, getDashboardStats, Approval, getTravelOrderById } from '../data/database';
 import ApprovalDetails from './ApprovalDetails';
 
-interface ApprovalsProps { onNavigate?: (page: Page) => void; }
+interface ApprovalsProps { 
+  onNavigate?: (page: Page) => void;
+  onSelectApproval?: (approval: Approval) => void;
+}
 
-const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
-  const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
+const Approvals: React.FC<ApprovalsProps> = ({ onNavigate, onSelectApproval }) => {
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const stats = getDashboardStats();
-
-  if (selectedApproval) {
-    return (
-      <ApprovalDetails 
-        approval={selectedApproval} 
-        onNavigate={onNavigate || (() => {})} 
-        onBack={() => setSelectedApproval(null)} 
-      />
-    );
-  }
 
   const filteredApprovals = approvals.filter(a => {
     const matchesSearch = a.requestorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -101,7 +93,7 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
             {filteredApprovals.map(a => (
               <div 
                 key={a.id} 
-                onClick={() => setSelectedApproval(a)}
+                onClick={() => onSelectApproval?.(a)}
                 className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors grid grid-cols-[1fr_200px_100px_140px] items-center gap-4 cursor-pointer"
               >
                 <div className="flex items-center gap-4 min-w-0">
@@ -132,7 +124,7 @@ const Approvals: React.FC<ApprovalsProps> = ({ onNavigate }) => {
           {filteredApprovals.map(a => (
             <div 
               key={a.id} 
-              onClick={() => setSelectedApproval(a)}
+              onClick={() => onSelectApproval?.(a)}
               className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
