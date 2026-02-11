@@ -275,14 +275,26 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
     const firstLeg = legs[0];
     
     if (isReturn && firstLeg) {
+      const fromId = prevLeg?.toLocationId || '';
+      const toId = firstLeg.fromLocationId || '';
+      
+      const dist = calculateDistance(
+        fromId,
+        toId,
+        prevLeg?.toLat,
+        prevLeg?.toLng,
+        firstLeg.fromLat,
+        firstLeg.fromLng
+      );
+
       // Return leg: from = previous leg's to, to = first leg's from
       setLegs([...legs, {
         id: Date.now().toString(),
-        fromLocationId: '',
-        toLocationId: '',
+        fromLocationId: fromId,
+        toLocationId: toId,
         startDate: prevLeg?.endDate || new Date().toISOString().split('T')[0],
         endDate: '',
-        distanceKm: 0,
+        distanceKm: dist,
         isReturn: true,
         fromLocationName: prevLeg?.toLocationName,
         fromLat: prevLeg?.toLat,
@@ -308,6 +320,8 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
         distanceKm: 0,
         isReturn,
         fromLocationName,
+        fromLat: prevLeg?.toLat,
+        fromLng: prevLeg?.toLng,
         toLocationName: '',
         isFromLocked: !!prevLeg
       }]);
