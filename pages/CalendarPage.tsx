@@ -212,11 +212,11 @@ const CalendarPage: React.FC = () => {
       {/* Day Details Modal */}
       {selectedDay && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setSelectedDay(null)}
         >
           <div 
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -252,36 +252,50 @@ const CalendarPage: React.FC = () => {
                   <p className="text-slate-500 dark:text-slate-400 text-sm">No travel orders scheduled for this day</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedDay.events.map((event) => (
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  {selectedDay.events.map((event, index) => {
+                    const isLast = index === selectedDay.events.length - 1;
+                    const total = selectedDay.events.length;
+                    let spanClass = "col-span-1";
+                    
+                    if (isLast) {
+                      if (total % 2 === 1) spanClass += " sm:col-span-2";
+                      if (total % 3 === 1) spanClass += " lg:col-span-3";
+                      else if (total % 2 === 1) spanClass += " lg:col-span-1";
+                    }
+
+                    return (
                     <div
                       key={event.id}
-                      className={`p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 border-l-4 ${getCardAccentColor(event.status)} hover:shadow-md transition-shadow`}
+                      className={`flex flex-col p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 border-l-4 ${getCardAccentColor(event.status)} hover:shadow-md transition-shadow h-full ${spanClass}`}
                     >
                       <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <p className="text-sm font-medium text-dash-blue">{event.id}</p>
-                          <p className="text-lg font-semibold text-slate-900 dark:text-white mt-0.5">{event.requester}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-dash-blue truncate">{event.id}</p>
+                          <p className="text-lg font-semibold text-slate-900 dark:text-white mt-0.5 truncate pr-2" title={event.requester}>{event.requester}</p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(event.status)}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium border shrink-0 ${getStatusStyle(event.status)}`}>
                           {event.status}
                         </span>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                          <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                          <span>{event.origin}</span>
-                          <span className="text-slate-300 dark:text-slate-600">→</span>
-                          <span>{event.destination}</span>
+                      <div className="space-y-3 mt-auto">
+                        <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                          <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                          <div className="flex flex-wrap items-center gap-1 min-w-0">
+                            <span className="truncate max-w-[80px]" title={event.origin}>{event.origin}</span>
+                            <span className="text-slate-300 dark:text-slate-600">→</span>
+                            <span className="truncate max-w-[80px]" title={event.destination}>{event.destination}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                          <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                          <span>{event.purpose}</span>
+                        <div className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400">
+                          <User className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                          <span className="line-clamp-2" title={event.purpose}>{event.purpose}</span>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </div>
