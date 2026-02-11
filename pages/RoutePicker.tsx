@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ArrowLeft, MapPin, X, Plus, Trash2, Check, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 import { Page, RouteLeg } from '../types';
+import { calculateAerialDistance } from '../utils/geo';
 
 interface RoutePickerProps {
   onNavigate: (page: Page) => void;
@@ -508,7 +509,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
 
       if (!mapInstanceRef.current) return;
 
-      if (data.routes.length > 0) {
+      if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
 
@@ -531,9 +532,50 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
           distance: route.distance / 1000,
           duration: route.duration / 60
         });
+      } else {
+        throw new Error('No route found');
       }
     } catch (error) {
-      console.error('Routing error:', error);
+      console.error('Routing error, falling back to aerial distance:', error);
+      
+      if (!mapInstanceRef.current) return;
+
+      // Fallback: calculate aerial distance
+      let totalDistance = 0;
+      for (let i = 0; i < currentPoints.length - 1; i++) {
+        totalDistance += calculateAerialDistance(
+          currentPoints[i].lat,
+          currentPoints[i].lng,
+          currentPoints[i + 1].lat,
+          currentPoints[i + 1].lng
+        );
+      }
+      
+      // Estimate duration: assume 40 km/h average speed
+      const estimatedDuration = (totalDistance / 40) * 60; 
+
+      setRouteInfo({
+        distance: totalDistance,
+        duration: estimatedDuration
+      });
+
+      // Draw straight lines connecting points
+      if (routeLineRef.current) {
+        routeLineRef.current.remove();
+      }
+      
+      const L = (window as any).L;
+      const coords = currentPoints.map(p => [p.lat, p.lng]);
+      routeLineRef.current = L.polyline(coords, {
+        color: '#ef4444', 
+        weight: 3,
+        opacity: 0.7,
+        dashArray: '10, 10',
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(mapInstanceRef.current);
+      
+      mapInstanceRef.current.fitBounds(routeLineRef.current.getBounds(), { padding: [50, 50] });
     } finally {
       setIsLoading(false);
     }
