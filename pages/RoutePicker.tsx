@@ -216,12 +216,14 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   const handleMapClick = async (lat: number, lng: number) => {
     if (!pickerMode) return;
 
+    setIsLoading(true);
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&countrycodes=ph`);
       const data = await response.json();
       
       // Only allow locations within Philippines
       if (data.address?.country_code !== 'ph') {
+        setIsLoading(false);
         return;
       }
       
@@ -248,6 +250,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
       setPickerMode(null);
       setPickerIndex(-1);
     }
+    // Note: setIsLoading(false) is handled by calculateRoute or updateMarkersAndRoute
   };
 
   // Assign the handler to ref so the map click effect can access it
@@ -296,6 +299,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   };
 
   const updatePoint = (id: string, updates: Partial<RoutePoint>) => {
+    setIsLoading(true);
     setPoints(currentPoints => {
       const newPoints = currentPoints.map(p => p.id === id ? { ...p, ...updates } : p);
       // Update markers and route after state is set
@@ -305,6 +309,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   };
 
   const removePoint = (id: string) => {
+    setIsLoading(true);
     const newPoints = points.filter(p => p.id !== id);
     setPoints(newPoints);
     
@@ -331,6 +336,7 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     // Can't move past start or end
     if (newIndex < 1 || newIndex >= points.length - 1) return;
     
+    setIsLoading(true);
     const newPoints = [...points];
     [newPoints[index], newPoints[newIndex]] = [newPoints[newIndex], newPoints[index]];
     
@@ -455,11 +461,15 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         routeLineRef.current = null;
       }
       setRouteInfo(null);
+      setIsLoading(false);
     }
   };
 
   const calculateRoute = async (currentPoints: RoutePoint[]) => {
-    if (currentPoints.length < 2) return;
+    if (currentPoints.length < 2) {
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
 
@@ -543,6 +553,8 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
     const lat = parseFloat(result.lat);
     const lng = parseFloat(result.lon);
     const name = result.display_name.split(',')[0];
+
+    setIsLoading(true);
 
     if (pickerMode === 'start') {
       addOrUpdatePoint({ lat, lng, name, type: 'start', index: 0 });
@@ -1130,9 +1142,9 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
         
         {/* Loading indicator */}
         {isLoading && (
-          <div className="absolute top-4 right-4 bg-slate-800 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+          <div className="absolute top-4 right-4 bg-slate-800 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-[1000]">
             <Loader2 className="w-4 h-4 text-dash-blue animate-spin" />
-            <span className="text-sm text-white">Calculating route...</span>
+            <span className="text-sm text-white">Please wait...</span>
           </div>
         )}
 
