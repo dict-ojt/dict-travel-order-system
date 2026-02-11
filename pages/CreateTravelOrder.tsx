@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight } from 'lucide-react';
 import { Page, RouteLeg } from '../types';
 import { travelSources, employees, currentUser, TravelOrder } from '../data/database';
+import LocationSearchInput from '../components/LocationSearchInput';
 
 interface TravelLeg {
   id: string;
@@ -206,7 +207,20 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
     );
   };
 
-  const calculateDistance = (fromId: string, toId: string): number => {
+  const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2); 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    const d = R * c; // Distance in km
+    return Math.round(d * 10) / 10;
+  };
+
+  const calculateDistance = (fromId: string, toId: string, fromLat?: number, fromLng?: number, toLat?: number, toLng?: number): number => {
     const distanceMap: Record<string, Record<string, number>> = {
       'loc-001': { 'loc-002': 270, 'loc-003': 400, 'loc-004': 85, 'loc-005': 60, 'loc-006': 15, 'loc-007': 570, 'loc-008': 975, 'loc-009': 570, 'loc-010': 250, 'loc-011': 465, 'loc-012': 850 },
       'loc-002': { 'loc-001': 270, 'loc-007': 840, 'loc-008': 1220 },
@@ -221,7 +235,35 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
       'loc-011': { 'loc-001': 465, 'loc-007': 180 },
       'loc-012': { 'loc-001': 850 }
     };
-    return distanceMap[fromId]?.[toId] || Math.floor(Math.random() * 500 + 100);
+    
+    if (distanceMap[fromId]?.[toId]) {
+      return distanceMap[fromId][toId];
+    }
+    
+    // Fallback coords for known locations if they are not passed explicitly
+    const coordMap: Record<string, { lat: number, lng: number }> = {
+      'loc-001': { lat: 14.65, lng: 121.05 }, // QC
+      'loc-002': { lat: 16.61, lng: 120.32 }, // La Union
+      'loc-003': { lat: 17.61, lng: 121.72 }, // Tuguegarao
+      'loc-004': { lat: 15.03, lng: 120.69 }, // Pampanga
+      'loc-005': { lat: 14.21, lng: 121.17 }, // Laguna
+      'loc-006': { lat: 14.59, lng: 120.98 }, // Manila
+      'loc-007': { lat: 10.31, lng: 123.89 }, // Cebu
+      'loc-008': { lat: 7.19, lng: 125.45 },  // Davao
+      'loc-009': { lat: 10.31, lng: 123.89 }, // Cebu
+      'loc-010': { lat: 16.40, lng: 120.59 }, // Baguio
+      'loc-011': { lat: 10.72, lng: 122.56 }, // Iloilo
+      'loc-012': { lat: 6.92, lng: 122.07 }   // Zamboanga
+    };
+
+    const start = (fromLat && fromLng) ? { lat: fromLat, lng: fromLng } : coordMap[fromId];
+    const end = (toLat && toLng) ? { lat: toLat, lng: toLng } : coordMap[toId];
+
+    if (start && end) {
+      return calculateHaversineDistance(start.lat, start.lng, end.lat, end.lng);
+    }
+
+    return 0;
   };
 
   const getLocationName = (id: string) => travelSources.find(s => s.id === id)?.name || '';
@@ -272,8 +314,34 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
     setLegs(legs.map(leg => {
       if (leg.id !== id) return leg;
       const updated = { ...leg, ...updates };
-      if ((updates.fromLocationId || updates.toLocationId) && updated.fromLocationId && updated.toLocationId) {
-        updated.distanceKm = calculateDistance(updated.fromLocationId, updated.toLocationId);
+      // Check if any location data changed
+      const locationChanged = 
+        updates.fromLocationId !== undefined || 
+        updates.toLocationId !== undefined ||
+        updates.fromLat !== undefined ||
+        updates.fromLng !== undefined ||
+        updates.toLat !== undefined ||
+        updates.toLng !== undefined;
+
+      if (locationChanged) {
+        // Only recalc if we have enough info to determine start and end
+        // Note: calculateDistance handles missing coords by looking up ID in coordMap
+        if ((updated.fromLocationId || (updated.fromLat && updated.fromLng)) && 
+            (updated.toLocationId || (updated.toLat && updated.toLng))) {
+              
+          const dist = calculateDistance(
+            updated.fromLocationId, 
+            updated.toLocationId,
+            updated.fromLat,
+            updated.fromLng,
+            updated.toLat,
+            updated.toLng
+          );
+          
+          if (dist > 0) {
+            updated.distanceKm = dist;
+          }
+        }
       }
       return updated;
     }));
@@ -389,7 +457,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
 
       <div className="space-y-6">
         {/* Travel Details - Sequential Legs */}
-        <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+        <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
@@ -427,38 +495,34 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
                             <span className="text-slate-500">From:</span>
-                            <input
-                              type="text"
-                              list="locations"
+                            <LocationSearchInput
                               value={leg.fromLocationName || getLocationName(leg.fromLocationId)}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                const source = travelSources.find(s => s.name === val);
+                              onChange={(val, id, lat, lng) => {
                                 updateLeg(leg.id, { 
                                   fromLocationName: val, 
-                                  fromLocationId: source ? source.id : '' 
+                                  fromLocationId: id || '',
+                                  fromLat: lat || 0,
+                                  fromLng: lng || 0
                                 });
                               }}
                               placeholder="Origin"
-                              className="flex-1 min-w-[120px] px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
+                              className="min-w-[120px]"
                             />
                             
                             <ArrowRight className="w-4 h-4 text-slate-400" />
                             
-                            <input
-                              type="text"
-                              list="locations"
+                            <LocationSearchInput
                               value={leg.toLocationName || getLocationName(leg.toLocationId)}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                const source = travelSources.find(s => s.name === val);
+                              onChange={(val, id, lat, lng) => {
                                 updateLeg(leg.id, { 
                                   toLocationName: val, 
-                                  toLocationId: source ? source.id : '' 
+                                  toLocationId: id || '',
+                                  toLat: lat || 0,
+                                  toLng: lng || 0
                                 });
                               }}
                               placeholder="Destination"
-                              className="flex-1 min-w-[120px] px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm"
+                              className="min-w-[120px]"
                             />
                           </div>
                           
@@ -890,11 +954,6 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
           </button>
         </div>
 
-        <datalist id="locations">
-          {travelSources.map(source => (
-            <option key={source.id} value={source.name} />
-          ))}
-        </datalist>
       </div>
     </div>
   );
