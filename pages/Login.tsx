@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import logo from '../assets/logo.png';
+import dict from '../assets/dict.png';
 
 interface LoginProps {
   onLogin: () => void;
@@ -25,7 +27,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* DICT Seal */}
           <div className="w-24 h-24 mb-2">
             <img
-              src="/assets/logo.png"
+              src={logo}
               className="w-full h-full object-contain drop-shadow-2xl"
               alt="DICT Seal"
             />
@@ -34,7 +36,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* DICT Official Banner */}
           <div className="flex items-center justify-center">
             <img
-              src="/assets/dict.png"
+              src={dict}
               className="h-24 w-64 object-contain opacity-90"
               alt="DICT Banner"
             />

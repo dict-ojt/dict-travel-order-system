@@ -1,4 +1,6 @@
 import React from 'react';
+import logo from '../assets/logo.png';
+import dict from '../assets/dict.png';
 import {
   Home, Building2, MapPin, RefreshCcw,
   Users, CheckCircle2, FileText, UserCog, Calendar
@@ -54,12 +56,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       {/* Brand Header */}
       <div className="h-16 flex flex-row items-center justify-center px-4 border-b border-slate-100 dark:border-dark-border py-3 gap-3">
         <img
-          src="/assets/logo.png"
+          src={logo}
           className="w-10 h-10 object-contain"
           alt="DICT Seal"
         />
         <img
-          src="/assets/dict.png"
+          src={dict}
           className="h-8 object-contain opacity-90"
           alt="DICT"
         />
