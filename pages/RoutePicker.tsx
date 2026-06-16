@@ -718,9 +718,9 @@ const RoutePicker: React.FC<RoutePickerProps> = ({
   const waypoints = points.filter(p => p.type === 'waypoint');
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-slate-900">
+    <div className="fixed inset-0 z-50 flex flex-col md:flex-row bg-slate-900">
       {/* Sidebar */}
-      <div className="w-full max-w-md bg-slate-800 border-r border-slate-700 flex flex-col">
+      <div className="w-full md:max-w-md bg-slate-800 border-b md:border-b-0 md:border-r border-slate-700 flex flex-col h-[45vh] md:h-full shrink-0">
         {/* Header */}
         <div className="p-4 border-b border-slate-700">
           <div className="flex items-center gap-3">
