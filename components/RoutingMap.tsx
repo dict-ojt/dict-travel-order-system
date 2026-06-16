@@ -1,7 +1,52 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import { LatLngExpression, LatLngBounds } from 'leaflet';
+import { LatLngExpression, LatLngBounds, divIcon } from 'leaflet';
 import { RouteOption, NormalizedLocation } from '../services/routingService';
+
+const startIcon = divIcon({
+    className: 'custom-marker',
+    html: `<svg width="28" height="36" viewBox="0 0 28 36" style="overflow: visible;">
+        <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22s14-11.5 14-22c0-7.73-6.27-14-14-14z" fill="#22c55e" stroke="white" stroke-width="2"/>
+        <circle cx="14" cy="14" r="5" fill="white"/>
+    </svg>`,
+    iconSize: [28, 36],
+    iconAnchor: [14, 36],
+    popupAnchor: [0, -36]
+});
+
+const endIcon = divIcon({
+    className: 'custom-marker',
+    html: `<svg width="28" height="36" viewBox="0 0 28 36" style="overflow: visible;">
+        <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22s14-11.5 14-22c0-7.73-6.27-14-14-14z" fill="#ef4444" stroke="white" stroke-width="2"/>
+        <circle cx="14" cy="14" r="5" fill="white"/>
+    </svg>`,
+    iconSize: [28, 36],
+    iconAnchor: [14, 36],
+    popupAnchor: [0, -36]
+});
+
+const stopIcon = divIcon({
+    className: 'custom-marker',
+    html: `<svg width="24" height="32" viewBox="0 0 24 32" style="overflow: visible;">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z" fill="#3b82f6" stroke="white" stroke-width="2"/>
+        <circle cx="12" cy="12" r="4" fill="white"/>
+    </svg>`,
+    iconSize: [24, 32],
+    iconAnchor: [12, 32],
+    popupAnchor: [0, -32]
+});
+
+const avoidIcon = divIcon({
+    className: 'custom-marker',
+    html: `<svg width="24" height="32" viewBox="0 0 24 32" style="overflow: visible;">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z" fill="#e11d48" stroke="white" stroke-width="2"/>
+        <path d="M9 9l6 6M15 9l-6 6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    </svg>`,
+    iconSize: [24, 32],
+    iconAnchor: [12, 32],
+    popupAnchor: [0, -32]
+});
+
 
 interface RoutingMapProps {
     startLocation: NormalizedLocation;
@@ -91,14 +136,14 @@ const RoutingMap: React.FC<RoutingMapProps> = ({
                     <MapUpdater bounds={bounds} />
 
                     {/* Start Marker */}
-                    <Marker position={[startLocation.lat, startLocation.lng]}>
+                    <Marker position={[startLocation.lat, startLocation.lng]} icon={startIcon}>
                         <Popup>
                             <div className="font-semibold">Start: {startLocation.name}</div>
                         </Popup>
                     </Marker>
 
                     {/* End Marker */}
-                    <Marker position={[endLocation.lat, endLocation.lng]}>
+                    <Marker position={[endLocation.lat, endLocation.lng]} icon={endIcon}>
                         <Popup>
                             <div className="font-semibold">End: {endLocation.name}</div>
                         </Popup>
@@ -106,7 +151,7 @@ const RoutingMap: React.FC<RoutingMapProps> = ({
 
                     {/* Stops/Waypoints Markers */}
                     {stops.map((stop, i) => (
-                        <Marker key={`stop-${i}`} position={[stop.lat, stop.lng]}>
+                        <Marker key={`stop-${i}`} position={[stop.lat, stop.lng]} icon={stopIcon}>
                             <Popup>
                                 <div className="font-semibold">Via: {stop.name}</div>
                             </Popup>
@@ -115,7 +160,7 @@ const RoutingMap: React.FC<RoutingMapProps> = ({
 
                     {/* Avoid Location Marker (Distinct) */}
                     {avoidLocation && (
-                        <Marker position={[avoidLocation.lat, avoidLocation.lng]} opacity={0.7}>
+                        <Marker position={[avoidLocation.lat, avoidLocation.lng]} opacity={0.7} icon={avoidIcon}>
                             <Popup>
                                 <div className="font-semibold text-red-600">AVOID: {avoidLocation.name}</div>
                                 <div className="text-xs text-red-500">Routes within 10km hidden</div>

@@ -1,4 +1,5 @@
 import { TravelSource } from '../data/database';
+import { NormalizedLocation } from '../types';
 
 export interface LocationSearchResult {
     place_id: number;
@@ -35,7 +36,7 @@ export interface RouteOption {
 }
 
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org/search';
-const OSRM_BASE_URL = 'http://router.project-osrm.org/route/v1/driving';
+const OSRM_BASE_URL = 'https://router.project-osrm.org/route/v1/driving';
 
 export const searchLocations = async (query: string): Promise<LocationSearchResult[]> => {
     if (!query || query.length < 3) return [];
@@ -277,12 +278,6 @@ export const deleteSavedRoute = (id: string) => {
 
 // Start coordinates for fallback map center (Default: Manila)
 // Helper to normalize location data
-export interface NormalizedLocation {
-    lat: number;
-    lng: number;
-    name: string;
-    address?: string;
-}
 
 export const normalizeLocation = (loc: any): NormalizedLocation | null => {
     if (!loc) return null;

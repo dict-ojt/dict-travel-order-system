@@ -1,43 +1,99 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight } from 'lucide-react';
-import { Page } from '../types';
+import { ArrowLeft, Calendar, MapPin, Users, FileText, CheckCircle, Upload, X, Plus, Car, Wallet, Route, ArrowRight, Lock, Unlock, Map, Info } from 'lucide-react';
+import { Page, RouteLeg, TravelLeg, NormalizedLocation } from '../types';
 import { travelSources, employees, currentUser, TravelOrder, travelOrders } from '../data/database';
 import LocationSelector from '../components/LocationSelector';
 import RouteSelectionModal from '../components/RouteSelectionModal';
-import { normalizeLocation, NormalizedLocation, RouteOption, getSavedRoutesFromStorage, SavedRoute } from '../services/routingService';
-
-interface CreateTravelOrderProps {
-  onNavigate: (page: Page) => void;
-  editingOrderId?: string | null;
-  onClearEdit?: () => void;
-}
-
-interface TravelLeg {
-  id: string;
-  fromLocation: NormalizedLocation;
-  toLocation: NormalizedLocation | null;
-  startDate: string;
-  endDate: string;
-  distanceKm: number;
-  isReturn: boolean;
-  stops: NormalizedLocation[];
-  avoid: ('tolls' | 'highways' | 'ferries')[];
-  avoidPoint: NormalizedLocation | null;
-}
+import { normalizeLocation, RouteOption, getSavedRoutesFromStorage, SavedRoute } from '../services/routingService';
 
 interface Traveler {
   id: string;
   employeeId: string;
 }
 
-const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editingOrderId, onClearEdit }) => {
+interface CreateTravelOrderProps {
+  onNavigate: (page: Page) => void;
+  editingOrderId?: string | null;
+  onClearEdit?: () => void;
+
+  // Lifted state props
+  baseOrigin: NormalizedLocation | null;
+  setBaseOrigin: (loc: NormalizedLocation | null) => void;
+  legs: TravelLeg[];
+  setLegs: React.Dispatch<React.SetStateAction<TravelLeg[]>>;
+  travelers: Traveler[];
+  setTravelers: React.Dispatch<React.SetStateAction<Traveler[]>>;
+  fundSource: string;
+  setFundSource: (val: string) => void;
+  vehicle: string;
+  setVehicle: (val: string) => void;
+  expenses: string[];
+  setExpenses: React.Dispatch<React.SetStateAction<string[]>>;
+  approvalSteps: string;
+  setApprovalSteps: (val: string) => void;
+  purpose: string;
+  setPurpose: (val: string) => void;
+  remarks: string;
+  setRemarks: (val: string) => void;
+  uploadedFiles: File[];
+  setUploadedFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  onResetData?: () => void;
+
+  // RoutePicker props
+  initialRouteLeg?: RouteLeg | null;
+  onClearRouteLeg?: () => void;
+  onOpenRoutePicker?: (
+    previousLeg: RouteLeg | null,
+    isReturn?: boolean,
+    returnEndPoint: { name: string; lat: number; lng: number } | null,
+    editingLeg: {
+      leg: TravelLeg;
+      startPoint: { name: string; lat: number; lng: number };
+      endPoint: { name: string; lat: number; lng: number };
+      waypoints: Array<{ name: string; lat: number; lng: number }>;
+    } | null
+  ) => void;
+  editingLegId?: string | null;
+  onClearEditingState?: () => void;
+}
+
+const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({
+  onNavigate,
+  editingOrderId,
+  onClearEdit,
+  baseOrigin,
+  setBaseOrigin,
+  legs,
+  setLegs,
+  travelers,
+  setTravelers,
+  fundSource,
+  setFundSource,
+  vehicle,
+  setVehicle,
+  expenses,
+  setExpenses,
+  approvalSteps,
+  setApprovalSteps,
+  purpose,
+  setPurpose,
+  remarks,
+  setRemarks,
+  uploadedFiles,
+  setUploadedFiles,
+  onResetData,
+  initialRouteLeg,
+  onClearRouteLeg,
+  onOpenRoutePicker,
+  editingLegId,
+  onClearEditingState
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dateErrors, setDateErrors] = useState<Record<string, string>>({});
-  const [baseOrigin, setBaseOrigin] = useState<NormalizedLocation | null>(null);
-  const [legs, setLegs] = useState<TravelLeg[]>([]);
+  const [routingMethod, setRoutingMethod] = useState<'form' | 'map'>('form');
+
   const [showRouteModal, setShowRouteModal] = useState(false);
   const [currentRouteLegId, setCurrentRouteLegId] = useState<string | null>(null);
   const [modalLocations, setModalLocations] = useState<{ from: NormalizedLocation, to: NormalizedLocation } | null>(null);
@@ -46,6 +102,15 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
   const [showSavedRoutes, setShowSavedRoutes] = useState(false);
   const [activeLegForSavedRoute, setActiveLegForSavedRoute] = useState<string | null>(null);
   const [savedRoutesList, setSavedRoutesList] = useState<SavedRoute[]>([]);
+
+  const hasAddedLeg = useRef(false);
+
+  // Sync saved routes lists
+  useEffect(() => {
+    if (showSavedRoutes) {
+      setSavedRoutesList(getSavedRoutesFromStorage());
+    }
+  }, [showSavedRoutes]);
 
   // Effect to populate form when editing
   useEffect(() => {
@@ -60,7 +125,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
         setRemarks(orderToEdit.remarks || '');
 
         // Set Origin
-        const origin = normalizeLocation({ name: orderToEdit.originName, display_name: orderToEdit.originName, lat: 0, lon: 0 });
+        const origin = normalizeLocation({ name: orderToEdit.originName, display_name: orderToEdit.originName, lat: 14.65, lon: 121.05 });
         setBaseOrigin(origin);
 
         if (orderToEdit.legs) {
@@ -70,11 +135,11 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
 
             const fromLoc = fromSource
               ? normalizeLocation(fromSource)
-              : normalizeLocation({ lat: 0, lon: 0, display_name: 'Unknown Location', name: 'Unknown Location' });
+              : normalizeLocation({ lat: 14.65, lon: 121.05, display_name: leg.fromLocationName || 'Unknown Location', name: leg.fromLocationName || 'Unknown Location' });
 
             const toLoc = toSource
               ? normalizeLocation(toSource)
-              : null;
+              : normalizeLocation({ lat: 14.65, lon: 121.05, display_name: leg.toLocationName || 'Unknown Location', name: leg.toLocationName || 'Unknown Location' });
 
             return {
               id: leg.id,
@@ -84,7 +149,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
               endDate: leg.endDate,
               distanceKm: leg.distanceKm,
               isReturn: leg.isReturn,
-              stops: [],
+              stops: leg.waypoints || [],
               avoid: [],
               avoidPoint: null
             };
@@ -95,25 +160,93 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
     }
   }, [editingOrderId]);
 
-  /* State Updates for Stops */
-  const [routeStops, setRouteStops] = useState<Record<string, NormalizedLocation[]>>({});
-
+  // Handle return from RoutePicker page
   useEffect(() => {
-    if (showSavedRoutes) {
-      setSavedRoutesList(getSavedRoutesFromStorage());
+    if (initialRouteLeg && !hasAddedLeg.current) {
+      hasAddedLeg.current = true;
+      const targetId = editingLegId;
+
+      if (targetId) {
+        // Update existing leg
+        setLegs(prev => prev.map(leg => {
+          if (leg.id === targetId) {
+            return {
+              ...leg,
+              startDate: initialRouteLeg.startDate || leg.startDate,
+              endDate: initialRouteLeg.endDate || leg.endDate,
+              distanceKm: Math.round(initialRouteLeg.distanceKm),
+              fromLocation: initialRouteLeg.fromLocation,
+              toLocation: initialRouteLeg.toLocation,
+              stops: initialRouteLeg.waypoints || []
+            };
+          }
+          return leg;
+        }));
+        onClearEditingState?.();
+      } else {
+        // Add new leg
+        const newLeg: TravelLeg = {
+          id: Date.now().toString(),
+          fromLocation: initialRouteLeg.fromLocation,
+          toLocation: initialRouteLeg.toLocation,
+          startDate: initialRouteLeg.startDate || '',
+          endDate: initialRouteLeg.endDate || '',
+          distanceKm: Math.round(initialRouteLeg.distanceKm),
+          isReturn: initialRouteLeg.isReturn || false,
+          stops: initialRouteLeg.waypoints || [],
+          avoid: [],
+          avoidPoint: null
+        };
+        
+        // Also update baseOrigin if it's the first leg
+        if (legs.length === 0) {
+          setBaseOrigin(initialRouteLeg.fromLocation);
+        }
+        setLegs(prev => [...prev, newLeg]);
+      }
+      onClearRouteLeg?.();
     }
-  }, [showSavedRoutes]);
+    if (!initialRouteLeg) {
+      hasAddedLeg.current = false;
+    }
+  }, [initialRouteLeg, onClearRouteLeg, setLegs, editingLegId, onClearEditingState, legs]);
+
+  const handleEditLeg = (leg: TravelLeg) => {
+    if (routingMethod === 'map') {
+      const startPoint = { 
+        name: leg.fromLocation.name,
+        lat: leg.fromLocation.lat,
+        lng: leg.fromLocation.lng
+      };
+      
+      const endPoint = {
+        name: leg.toLocation?.name || '',
+        lat: leg.toLocation?.lat || 0,
+        lng: leg.toLocation?.lng || 0
+      };
+      
+      const waypoints = leg.stops || [];
+      
+      onOpenRoutePicker?.(
+        null, 
+        leg.isReturn, 
+        null, 
+        { 
+          leg, 
+          startPoint, 
+          endPoint,
+          waypoints
+        }
+      );
+    }
+  };
 
   const handleLoadSavedRoute = (route: SavedRoute) => {
     if (!activeLegForSavedRoute) return;
 
-    // Apply saved route to the leg
     const legIndex = legs.findIndex(l => l.id === activeLegForSavedRoute);
     if (legIndex === -1) return;
 
-    // We can't easily change the *origin* of the leg if it's tied to the previous leg, 
-    // unless it's the first leg. But let's assume valid intent.
-    // If it's the first leg, we update baseOrigin.
     if (legIndex === 0) {
       setBaseOrigin(route.from);
       const newLegs = [...legs];
@@ -121,74 +254,79 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
       newLegs[0].toLocation = route.to;
       newLegs[0].avoid = route.avoid;
       newLegs[0].avoidPoint = route.avoidPoint;
+      newLegs[0].stops = route.stops;
       setLegs(newLegs);
     } else {
-      // For subsequent legs, we can only update To, unless we break the chain geometry?
-      // Let's just update To and Stops/Avoidances. 
-      // Warn if origin mismatch?
       const leg = legs[legIndex];
       if (leg.fromLocation.name !== route.from.name) {
-        alert(`Note: The saved route starts from ${route.from.name}, but this leg starts from ${leg.fromLocation.name}. Waypoints might be off.`);
+        alert(`Note: The saved route starts from ${route.from.name}, but this leg starts from ${leg.fromLocation.name}. Stops might be misaligned.`);
       }
       updateLeg(activeLegForSavedRoute, {
         toLocation: route.to,
         avoid: route.avoid,
-        avoidPoint: route.avoidPoint
+        avoidPoint: route.avoidPoint,
+        stops: route.stops
       });
     }
-
-    // Update stops
-    setRouteStops(prev => ({
-      ...prev,
-      [activeLegForSavedRoute]: route.stops
-    }));
 
     setShowSavedRoutes(false);
     setActiveLegForSavedRoute(null);
   };
 
   const addStopToLeg = (legId: string) => {
-    setRouteStops(prev => ({
-      ...prev,
-      [legId]: [...(prev[legId] || []), { lat: 0, lng: 0, name: '', address: '' }] // Placeholder
+    setLegs(prev => prev.map(l => {
+      if (l.id !== legId) return l;
+      return {
+        ...l,
+        stops: [...l.stops, { lat: 0, lng: 0, name: '', address: '' }]
+      };
     }));
   };
 
   const removeStopFromLeg = (legId: string, index: number) => {
-    setRouteStops(prev => ({
-      ...prev,
-      [legId]: (prev[legId] || []).filter((_, i) => i !== index)
+    setLegs(prev => prev.map(l => {
+      if (l.id !== legId) return l;
+      return {
+        ...l,
+        stops: l.stops.filter((_, i) => i !== index)
+      };
     }));
   };
 
   const updateStopInLeg = (legId: string, index: number, location: NormalizedLocation) => {
-    setRouteStops(prev => {
-      const newStops = [...(prev[legId] || [])];
+    setLegs(prev => prev.map(l => {
+      if (l.id !== legId) return l;
+      const newStops = [...l.stops];
       newStops[index] = location;
-      return { ...prev, [legId]: newStops };
-    });
+      return {
+        ...l,
+        stops: newStops
+      };
+    }));
   };
-
-  const [travelers, setTravelers] = useState<Traveler[]>([{ id: '1', employeeId: currentUser.id }]);
-  const [fundSource, setFundSource] = useState('');
-  const [vehicle, setVehicle] = useState('');
-  const [expenses, setExpenses] = useState<string[]>([]);
-  const [approvalSteps, setApprovalSteps] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [remarks, setRemarks] = useState('');
-
-
 
   const getLocationName = (loc: NormalizedLocation | null) => loc?.name || 'Unknown';
 
   const addLeg = (isReturn: boolean = false) => {
+    if (routingMethod === 'map') {
+      const lastLeg = legs[legs.length - 1];
+      const prevLeg = lastLeg ? {
+        fromLocation: lastLeg.fromLocation,
+        toLocation: lastLeg.toLocation || lastLeg.fromLocation,
+        distanceKm: lastLeg.distanceKm,
+        durationMin: 0
+      } : null;
+
+      onOpenRoutePicker?.(prevLeg, isReturn, isReturn ? baseOrigin : null, null);
+      return;
+    }
+
     if (!baseOrigin) return;
 
     const prevLeg = legs[legs.length - 1];
     const fromLocation = prevLeg ? prevLeg.toLocation : baseOrigin;
     const toLocation = isReturn ? baseOrigin : null;
 
-    // Safety check - if previous leg has no destination, we can't start a new one unless it's the first one logic
     if (prevLeg && !prevLeg.toLocation) return;
 
     const today = new Date();
@@ -206,9 +344,6 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
       avoid: [],
       avoidPoint: null
     }]);
-
-    // If it's a return leg, we can auto-calculate route distance if we want, but user might want options.
-    // Let's just set the locations.
   };
 
   const updateLeg = (id: string, updates: Partial<TravelLeg>) => {
@@ -310,20 +445,12 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
     setIsSubmitting(false);
 
     if (createAnother) {
-      setBaseOrigin(null);
-      setLegs([]);
-      setTravelers([{ id: '1', employeeId: currentUser.id }]);
-      setFundSource('');
-      setVehicle('');
-      setExpenses([]);
-      setApprovalSteps('');
-      setPurpose('');
-      setRemarks('');
-      setUploadedFiles([]);
+      onResetData?.();
       setDateErrors({});
       onClearEdit?.();
     } else {
       onClearEdit?.();
+      onResetData?.();
       onNavigate(Page.TRAVEL_ORDERS);
     }
   };
@@ -344,7 +471,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
   return (
     <div className="max-w-5xl mx-auto pb-8">
       <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => { onClearEdit?.(); onNavigate(Page.TRAVEL_ORDERS); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+        <button onClick={() => { onClearEdit?.(); onNavigate(Page.TRAVEL_ORDERS); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
           <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
         </button>
         <div>
@@ -356,7 +483,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
       <div className="space-y-6">
         {/* Travel Details - Sequential Legs */}
         <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap justify-between items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <Route className="w-5 h-5 text-dash-blue" />
@@ -366,10 +493,38 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                 <p className="text-xs text-slate-500 dark:text-slate-400">Multi-leg journey planner</p>
               </div>
             </div>
+
+            {/* Routing Method Toggle */}
+            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-fit">
+              <button
+                type="button"
+                onClick={() => setRoutingMethod('form')}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  routingMethod === 'form'
+                    ? 'bg-white dark:bg-slate-800 text-dash-blue shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Form & Modal Select
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoutingMethod('map')}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  routingMethod === 'map'
+                    ? 'bg-white dark:bg-slate-800 text-dash-blue shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                <Map className="w-3.5 h-3.5" />
+                Interactive Map Picker
+              </button>
+            </div>
           </div>
 
           <div className="p-6 space-y-6">
-            {/* Starting Point */}
+            {/* Starting Point (shared base origin) */}
             <div className="space-y-2">
               <LocationSelector
                 label="Starting Point (Origin)"
@@ -378,9 +533,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                 onSelect={(val) => {
                   const norm = normalizeLocation(val);
                   setBaseOrigin(norm);
-                  // Reset legs if origin changes? Maybe not, complicates things.
                   if (legs.length > 0 && legs[0].fromLocation.name !== norm?.name) {
-                    // Ideally we warn user or update first leg from
                     const newLegs = [...legs];
                     newLegs[0].fromLocation = norm!;
                     setLegs(newLegs);
@@ -390,25 +543,22 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
               />
             </div>
 
-            {/* Travel Legs */}
-
-            {legs.length > 0 && (
+            {/* Method A: Form & Modal Select */}
+            {routingMethod === 'form' && legs.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  <span>Travel Legs</span>
+                  <span>Travel Legs (Form-based)</span>
                   <div className="h-px flex-1 bg-slate-200 dark:bg-slate-600" />
                 </div>
 
                 <div className="space-y-4">
                   {legs.map((leg, index) => (
                     <div key={leg.id} className="relative group">
-                      {/* Connector Line */}
                       {index < legs.length - 1 && (
                         <div className="absolute left-[31px] top-12 bottom-[-16px] w-0.5 bg-slate-200 dark:bg-slate-700 z-0" />
                       )}
 
-                      <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm transition-all hover:shadow-md z-10">
-                        {/* Header with Leg Number and Actions */}
+                      <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm transition-all hover:shadow-md z-10 animate-fade-in">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 ${getLegColor(index)} rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0`}>
@@ -431,9 +581,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                         </div>
 
                         <div className="pl-11 space-y-4">
-                          {/* Route Grid */}
                           <div className="grid md:grid-cols-[1fr,auto,1fr] gap-4 items-start">
-                            {/* From */}
                             <div className="space-y-1.5">
                               <label className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                                 <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
@@ -444,12 +592,10 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                               </div>
                             </div>
 
-                            {/* Arrow (Hidden on mobile) */}
                             <div className="hidden md:flex pt-8 justify-center text-slate-300 dark:text-slate-600">
                               <ArrowRight className="w-5 h-5" />
                             </div>
 
-                            {/* To */}
                             <div className="space-y-1.5">
                               <label className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                                 <MapPin className="w-3 h-3 text-dash-blue" />
@@ -480,9 +626,9 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                               </button>
                             </div>
 
-                            {routeStops[leg.id]?.length > 0 ? (
+                            {leg.stops.length > 0 ? (
                               <div className="space-y-2">
-                                {routeStops[leg.id].map((stop, stopIndex) => (
+                                {leg.stops.map((stop, stopIndex) => (
                                   <div key={stopIndex} className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
                                     <div className="flex-1">
@@ -508,10 +654,9 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                             )}
                           </div>
 
-                          {/* Footer: Dates and Route */}
+                          {/* Dates and Route Actions */}
                           <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
                             <div className="flex flex-wrap items-center gap-4">
-                              {/* Date Range */}
                               <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-600">
                                 <div className="relative">
                                   <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -564,15 +709,110 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
               </div>
             )}
 
+            {/* Method B: Interactive Map Timeline (Route Picker) */}
+            {routingMethod === 'map' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <span>Travel Legs (Interactive Timeline)</span>
+                  <div className="h-px flex-1 bg-slate-200 dark:bg-slate-600" />
+                </div>
+
+                {legs.length > 0 ? (
+                  <div className="space-y-4 relative pl-8 border-l border-slate-200 dark:border-slate-700 ml-4 py-2">
+                    {legs.map((leg, index) => (
+                      <div key={leg.id} className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer group" onClick={() => handleEditLeg(leg)}>
+                        {/* Bullet Icon */}
+                        <div className={`absolute -left-[45px] top-6 w-8 h-8 ${getLegColor(index)} rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0 z-10`}>
+                          {index + 1}
+                        </div>
+
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                              <span className="text-slate-500">From:</span>
+                              <span className="text-slate-900 dark:text-white truncate max-w-[200px]">{leg.fromLocation.name}</span>
+                              <ArrowRight className="w-4 h-4 text-slate-400" />
+                              <span className="text-slate-500">To:</span>
+                              <span className="text-slate-900 dark:text-white truncate max-w-[200px]">{leg.toLocation?.name || 'Unset'}</span>
+                              
+                              {leg.isReturn && (
+                                <span className="ml-2 px-2 py-0.5 bg-green-100 dark:bg-green-900/35 text-green-700 dark:text-green-400 text-[10px] font-medium rounded-full">Return</span>
+                              )}
+                            </div>
+
+                            {/* Waypoints */}
+                            {leg.stops.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                                <span>Stops:</span>
+                                {leg.stops.map((stop, sIdx) => (
+                                  <span key={sIdx} className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-[11px] font-medium">
+                                    {stop.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Date inputs (Click event stopped to avoid opening picker) */}
+                            <div className="flex flex-wrap items-center gap-3 pt-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-1 text-slate-500">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <input
+                                  type="date"
+                                  value={leg.startDate}
+                                  onChange={(e) => updateLeg(leg.id, { startDate: e.target.value })}
+                                  min={index > 0 ? legs[index - 1]?.endDate : new Date().toISOString().split('T')[0]}
+                                  className="bg-transparent border-0 p-0 text-xs w-24 text-slate-700 dark:text-slate-300 focus:ring-0"
+                                />
+                              </div>
+                              <span className="text-slate-400">→</span>
+                              <div className="flex items-center gap-1 text-slate-500">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <input
+                                  type="date"
+                                  value={leg.endDate}
+                                  onChange={(e) => updateLeg(leg.id, { endDate: e.target.value })}
+                                  min={leg.startDate}
+                                  className="bg-transparent border-0 p-0 text-xs w-24 text-slate-700 dark:text-slate-300 focus:ring-0"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex flex-col items-end gap-2 shrink-0">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white">{leg.distanceKm} km</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] px-2 py-0.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-500 rounded opacity-0 group-hover:opacity-100 transition-opacity">Edit on Map</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removeLeg(leg.id); }}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/25 rounded-md"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center bg-slate-50/50 dark:bg-slate-900/10">
+                    <Info className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No legs added yet</p>
+                    <p className="text-xs text-slate-400 mt-1">Click below to trace a leg using the interactive map</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Add Buttons */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 pt-2">
               <button
                 onClick={() => addLeg(false)}
-                disabled={!baseOrigin || (legs.length > 0 && !legs[legs.length - 1].toLocation) || legs.some(l => l.isReturn)}
+                disabled={!baseOrigin || (routingMethod === 'form' && legs.length > 0 && !legs[legs.length - 1].toLocation) || legs.some(l => l.isReturn)}
                 className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 rounded-lg hover:border-dash-blue hover:text-dash-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
-                Add Travel Leg
+                {routingMethod === 'map' ? 'Pick Leg on Map' : 'Add Travel Leg'}
               </button>
               {legs.length > 0 && !legs.some(l => l.isReturn) && (
                 <button
@@ -580,7 +820,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                   className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 rounded-lg hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm font-medium"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Return Leg
+                  {routingMethod === 'map' ? 'Pick Return Leg on Map' : 'Add Return Leg'}
                 </button>
               )}
             </div>
@@ -626,7 +866,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                   onChange={(e) => setPurpose(e.target.value)}
                   rows={3}
                   placeholder="Describe the purpose of this travel..."
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm resize-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm resize-none focus:ring-2 focus:ring-dash-blue/50 outline-none"
                 />
               </div>
               <div className="space-y-2">
@@ -636,7 +876,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                   onChange={(e) => setRemarks(e.target.value)}
                   rows={2}
                   placeholder="Additional notes or remarks..."
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm resize-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm resize-none focus:ring-2 focus:ring-dash-blue/50 outline-none"
                 />
               </div>
             </div>
@@ -648,81 +888,75 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <Wallet className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <Car className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Budget & Vehicle</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Funding and transportation details</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Expense allocation and transport options</p>
               </div>
             </div>
           </div>
 
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Fund Source <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={fundSource}
-                onChange={(e) => setFundSource(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
-              >
-                <option value="">Select an option</option>
-                <option value="general">General Fund</option>
-                <option value="special">Special Projects</option>
-                <option value="external">External Funding</option>
-                <option value="donation">Donations</option>
-              </select>
-            </div>
+          <div className="p-6 space-y-4">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Source of Fund <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={fundSource}
+                  onChange={(e) => setFundSource(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-dash-blue/50 outline-none"
+                >
+                  <option value="">Select source of fund</option>
+                  <option value="main">Main Office Budget</option>
+                  <option value="regional">Regional Fund</option>
+                  <option value="special">Special Project Fund</option>
+                  <option value="external">External Sponsor</option>
+                </select>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Vehicle to be Used</label>
-              <div className="relative">
-                <Car className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Vehicle Option <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={vehicle}
                   onChange={(e) => setVehicle(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-dash-blue/50 outline-none"
                 >
-                  <option value="">Select an option</option>
-                  <option value="Government Vehicle">Government Vehicle</option>
-                  <option value="Rental Vehicle">Rental Vehicle</option>
-                  <option value="Personal Vehicle">Personal Vehicle</option>
-                  <option value="Public Transport">Public Transport</option>
-                  <option value="Commercial Air">Commercial Air</option>
+                  <option value="">Select vehicle option</option>
+                  <option value="official">Official Vehicle (DICT service)</option>
+                  <option value="rented">Rented Vehicle</option>
+                  <option value="personal">Personal Vehicle (Reimbursable)</option>
+                  <option value="public">Public Transport (Bus, plane, ferry)</option>
                 </select>
               </div>
             </div>
 
-            <div className="md:col-span-2 space-y-3">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Additional Travel Expenses</label>
-              <div className="flex flex-wrap gap-3">
-                {expenseOptions.map(option => {
-                  const isSelected = expenses.includes(option.value);
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleExpenseChange(option.value)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${isSelected
-                        ? 'border-dash-blue bg-blue-50 dark:bg-blue-900/20 text-dash-blue'
-                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 text-slate-700 dark:text-slate-300'
-                        }`}
-                    >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-dash-blue bg-dash-blue' : 'border-slate-400'
-                        }`}>
-                        {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
-                      </div>
-                      <span className="text-sm">{option.label}</span>
-                    </button>
-                  );
-                })}
+            <div className="space-y-2 pt-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Wallet className="w-4 h-4 text-slate-400" />
+                Expenses to Claim
+              </label>
+              <div className="flex flex-wrap gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                {expenseOptions.map(opt => (
+                  <label key={opt.value} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={expenses.includes(opt.value)}
+                      onChange={() => handleExpenseChange(opt.value)}
+                      className="rounded border-slate-300 text-dash-blue focus:ring-dash-blue/30 w-4 h-4"
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        {/* Travelers */}
+        {/* Travelers List */}
         <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex items-center gap-3">
@@ -730,23 +964,23 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                 <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Traveler/s</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">List of personnel traveling</p>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Travelers List</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Add employees traveling under this order</p>
               </div>
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-6 space-y-4">
             <div className="space-y-3">
               {travelers.map((traveler, index) => (
-                <div key={traveler.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 rounded-lg">
-                  <span className="w-8 h-8 bg-dash-blue text-white rounded-full flex items-center justify-center text-sm font-medium">
+                <div key={traveler.id} className="flex items-center gap-3 animate-fade-in">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-500 shrink-0">
                     {index + 1}
-                  </span>
+                  </div>
                   <select
                     value={traveler.employeeId}
                     onChange={(e) => updateTraveler(traveler.id, e.target.value)}
-                    className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                    className="flex-1 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-dash-blue/50 outline-none"
                   >
                     <option value="">Select employee</option>
                     {employees.map(emp => (
@@ -756,7 +990,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
                   {travelers.length > 1 && (
                     <button
                       onClick={() => removeTraveler(traveler.id)}
-                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -796,7 +1030,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
               <select
                 value={approvalSteps}
                 onChange={(e) => setApprovalSteps(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-dash-blue/50 outline-none"
               >
                 <option value="">Select approval workflow</option>
                 <option value="supervisor">Direct Supervisor → HR</option>
@@ -858,13 +1092,13 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
 
         {/* Actions */}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <button onClick={() => onNavigate(Page.TRAVEL_ORDERS)} className="px-6 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800">
+          <button onClick={() => { onResetData?.(); onNavigate(Page.TRAVEL_ORDERS); }} className="px-6 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             Cancel
           </button>
-          <button onClick={() => handleSubmit(true)} disabled={isSubmitting || Object.keys(dateErrors).length > 0} className="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 disabled:opacity-50">
+          <button onClick={() => handleSubmit(true)} disabled={isSubmitting || Object.keys(dateErrors).length > 0} className="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 disabled:opacity-50 transition-colors">
             {isSubmitting ? 'Creating...' : 'Create & Create Another'}
           </button>
-          <button onClick={() => handleSubmit(false)} disabled={isSubmitting || Object.keys(dateErrors).length > 0} className="px-6 py-2.5 bg-dash-blue text-white rounded-lg font-medium hover:bg-blue-600 shadow-sm disabled:opacity-50">
+          <button onClick={() => handleSubmit(false)} disabled={isSubmitting || Object.keys(dateErrors).length > 0} className="px-6 py-2.5 bg-dash-blue text-white rounded-lg font-medium hover:bg-blue-600 shadow-sm disabled:opacity-50 transition-colors">
             {isSubmitting ? 'Creating...' : 'Create'}
           </button>
         </div>
@@ -874,7 +1108,7 @@ const CreateTravelOrder: React.FC<CreateTravelOrderProps> = ({ onNavigate, editi
         onClose={() => setShowRouteModal(false)}
         from={modalLocations?.from || null}
         to={modalLocations?.to || null}
-        stops={currentRouteLegId ? (routeStops[currentRouteLegId]?.filter(s => s.name !== '') || []) : []}
+        stops={currentRouteLegId ? (legs.find(l => l.id === currentRouteLegId)?.stops.filter(s => s.name !== '') || []) : []}
         onSelectRoute={handleRouteSelect}
       />
     </div>

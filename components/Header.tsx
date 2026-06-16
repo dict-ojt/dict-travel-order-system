@@ -1,17 +1,27 @@
 
 import React from 'react';
-import { LogOut, Sun, Moon, Laptop, Search } from 'lucide-react';
+import { LogOut, Sun, Moon, Laptop, Search, Menu } from 'lucide-react';
 
 interface HeaderProps {
   onLogout: () => void;
   theme: 'light' | 'dark' | 'system';
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  onMenuToggle?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onLogout, theme, setTheme }) => {
+const Header: React.FC<HeaderProps> = ({ onLogout, theme, setTheme, onMenuToggle }) => {
   return (
-    <header className="h-12 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 flex-shrink-0 transition-colors">
-      <div className="flex items-center flex-1">
+    <header className="h-12 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 flex-shrink-0 transition-colors">
+      <div className="flex items-center flex-1 gap-3">
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg md:hidden text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            title="Toggle Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         <div className="relative w-full max-w-xs group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input

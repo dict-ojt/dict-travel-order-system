@@ -3,7 +3,7 @@ import logo from '../assets/logo.png';
 import dict from '../assets/dict.png';
 import {
   Home, Building2, MapPin, RefreshCcw,
-  Users, CheckCircle2, FileText, UserCog, Calendar
+  Users, CheckCircle2, FileText, UserCog, Calendar, X
 } from 'lucide-react';
 import { Page } from '../types';
 import { currentUser } from '../data/database';
@@ -11,9 +11,11 @@ import { currentUser } from '../data/database';
 interface SidebarProps {
   currentPage: Page;
   onPageChange: (page: Page) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, isOpen = false, onClose }) => {
   const menuGroups = [
     {
       title: 'Navigation',
@@ -52,19 +54,31 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
   ];
 
   return (
-    <div className="w-[240px] bg-white dark:bg-dark-sidebar border-r border-slate-200 dark:border-dark-border flex flex-col flex-shrink-0 h-full overflow-hidden transition-all duration-300">
+    <div className={`w-[240px] bg-white dark:bg-dark-sidebar border-r border-slate-200 dark:border-dark-border flex flex-col flex-shrink-0 h-full overflow-hidden transition-transform duration-300 z-40 fixed inset-y-0 left-0 md:relative md:translate-x-0 ${
+      isOpen ? 'translate-x-0 shadow-2xl md:shadow-none' : '-translate-x-full'
+    }`}>
       {/* Brand Header */}
-      <div className="h-16 flex flex-row items-center justify-center px-4 border-b border-slate-100 dark:border-dark-border py-3 gap-3">
-        <img
-          src={logo}
-          className="w-10 h-10 object-contain"
-          alt="DICT Seal"
-        />
-        <img
-          src={dict}
-          className="h-8 object-contain opacity-90"
-          alt="DICT"
-        />
+      <div className="h-16 flex flex-row items-center justify-between md:justify-center px-4 border-b border-slate-100 dark:border-dark-border py-3 gap-3">
+        <div className="flex items-center justify-center gap-3">
+          <img
+            src={logo}
+            className="w-10 h-10 object-contain"
+            alt="DICT Seal"
+          />
+          <img
+            src={dict}
+            className="h-8 object-contain opacity-90"
+            alt="DICT"
+          />
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg md:hidden text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar py-4">
